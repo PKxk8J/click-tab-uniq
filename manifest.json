@@ -1,0 +1,15 @@
+{
+  "manifest_version": 2,
+  "name": "ClickTabUniq",
+  "version": "1.0.0",
+  "description": "Close duplicated tabs from right click menu",
+  "permissions": [
+    "tabs",
+    "contextMenus"
+  ],
+  "background": {
+    "scripts": [
+      "uniq.js"
+    ]
+  }
+}
