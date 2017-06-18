@@ -32,6 +32,7 @@ function makeUniqer (keyGetter) {
     querying.then((tabs) => {
       const keys = new Set()
 
+      const removeIds = []
       for (let tab of tabs) {
         const key = keyGetter(tab)
         if (!keys.has(key)) {
@@ -39,10 +40,16 @@ function makeUniqer (keyGetter) {
           continue
         }
 
-        // console.log('Tab ' + tab.id + ' will be removed: ' + key)
-        const removing = browser.tabs.remove([tab.id])
-        removing.then(() => console.log('Tab ' + tab.id + ' was removed: ' + key), onError)
+        removeIds.push(tab.id)
+        console.log('Tab ' + tab.id + ' will be removed: ' + key)
       }
+
+      if (removeIds.length === 0) {
+        return
+      }
+
+      const removing = browser.tabs.remove(removeIds)
+      removing.then(() => console.log('Tabs ' + removeIds + ' were removed'), onError)
     }, onError)
   }
 }
