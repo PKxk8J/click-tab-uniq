@@ -2,7 +2,7 @@
 
 chrome.contextMenus.create({
   id: 'uniq',
-  title: '重複削除',
+  title: browser.i18n.getMessage('uniq'),
   contexts: ['tab']
 })
 
@@ -15,7 +15,7 @@ chrome.contextMenus.create({
 
 chrome.contextMenus.create({
   id: 'title',
-  title: 'タイトル',
+  title: browser.i18n.getMessage('title'),
   contexts: ['tab'],
   parentId: 'uniq'
 })
