@@ -11,5 +11,6 @@
     "scripts": [
       "uniq.js"
     ]
-  }
+  },
+  "default_locale": "en"
 }
