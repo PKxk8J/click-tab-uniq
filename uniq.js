@@ -32,8 +32,19 @@ function makeUniqer (keyGetter) {
     querying.then((tabs) => {
       const keys = new Set()
 
+      // ピン留めされているタブを先に調べる
+      for (let tab of tabs) {
+        if (tab.pinned) {
+          keys.add(keyGetter(tab))
+        }
+      }
+
       const removeIds = []
       for (let tab of tabs) {
+        if (tab.pinned) {
+          continue
+        }
+
         const key = keyGetter(tab)
         if (!keys.has(key)) {
           keys.add(key)
