@@ -3,6 +3,11 @@
   "name": "ClickTabUniq",
   "version": "1.0.1",
   "description": "Close duplicated tabs from right click menu on tabs.\n\nYou can close duplicated tabs based on URL or title.\nPinned tabs are not closed.",
+  "applications": {
+    "gecko": {
+      "strict_min_version": "53.0"
+    }
+  },
   "permissions": [
     "tabs",
     "contextMenus"
