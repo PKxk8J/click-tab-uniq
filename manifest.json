@@ -2,7 +2,7 @@
   "manifest_version": 2,
   "name": "ClickTabUniq",
   "version": "1.0.0",
-  "description": "Close duplicated tabs from right click menu",
+  "description": "Close duplicated tabs from right click menu on tabs.\n\nYou can close duplicated tabs based on URL or title.\nPinned tabs are not closed.",
   "permissions": [
     "tabs",
     "contextMenus"
