@@ -2,6 +2,9 @@
   "uniq": {
     "message": "重複削除"
   },
+  "uniqBy": {
+    "message": "$1で重複削除"
+  },
   "title": {
     "message": "タイトル"
   },
