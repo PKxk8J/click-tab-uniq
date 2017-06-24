@@ -1,9 +1,10 @@
 'use strict'
 
-const LABEL_UNIQ = browser.i18n.getMessage('uniq')
-const LABEL_TITLE = browser.i18n.getMessage('title')
+const { contextMenus, i18n, storage, tabs } = browser
+const storageArea = storage.sync
 
-const storage = browser.storage.sync
+const LABEL_UNIQ = i18n.getMessage('uniq')
+const LABEL_TITLE = i18n.getMessage('title')
 
 function onError (error) {
   console.error('Error: ' + error)
@@ -14,13 +15,13 @@ function changeSetting (result) {
   const titleOn = typeof result.title === 'undefined' || result.title
 
   // 一旦、全削除してから追加する
-  const removing = browser.contextMenus.removeAll()
+  const removing = contextMenus.removeAll()
   removing.then(() => {
     console.log('Clear items')
 
     if (urlOn || titleOn) {
       console.log('Add ' + LABEL_UNIQ + ' item')
-      browser.contextMenus.create({
+      contextMenus.create({
         id: 'uniq',
         title: LABEL_UNIQ,
         contexts: ['tab']
@@ -29,7 +30,7 @@ function changeSetting (result) {
 
     function setKeyItem (on, id, title) {
       if (on) {
-        browser.contextMenus.create({
+        contextMenus.create({
           id,
           title,
           contexts: ['tab'],
@@ -43,9 +44,9 @@ function changeSetting (result) {
   }, onError)
 }
 
-const getting = storage.get()
+const getting = storageArea.get()
 getting.then(changeSetting, onError)
-browser.storage.onChanged.addListener((changes, area) => {
+storage.onChanged.addListener((changes, area) => {
   const result = {
     url: changes.url.newValue,
     title: changes.title.newValue
@@ -57,19 +58,19 @@ browser.storage.onChanged.addListener((changes, area) => {
 // 重複するタブを削除する関数をつくる
 function makeUniqer (keyGetter) {
   return () => {
-    const querying = browser.tabs.query({currentWindow: true})
-    querying.then((tabs) => {
+    const querying = tabs.query({currentWindow: true})
+    querying.then((tabList) => {
       const keys = new Set()
 
       // ピン留めされているタブを先に調べる
-      for (let tab of tabs) {
+      for (let tab of tabList) {
         if (tab.pinned) {
           keys.add(keyGetter(tab))
         }
       }
 
       const removeIds = []
-      for (let tab of tabs) {
+      for (let tab of tabList) {
         if (tab.pinned) {
           continue
         }
@@ -88,13 +89,13 @@ function makeUniqer (keyGetter) {
         return
       }
 
-      const removing = browser.tabs.remove(removeIds)
+      const removing = tabs.remove(removeIds)
       removing.then(() => console.log('Tabs ' + removeIds + ' were removed'), onError)
     }, onError)
   }
 }
 
-chrome.contextMenus.onClicked.addListener((info, tab) => {
+contextMenus.onClicked.addListener((info, tab) => {
   switch (info.menuItemId) {
     case 'url': {
       makeUniqer((tab) => tab.url)()
