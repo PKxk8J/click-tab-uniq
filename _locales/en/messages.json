@@ -2,6 +2,12 @@
   "uniq": {
     "message": "Close Duplicates"
   },
+  "uniqBy": {
+    "message": "Close Duplicates in $1"
+  },
+  "url": {
+    "message": "URL"
+  },
   "title": {
     "message": "Title"
   },

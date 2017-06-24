@@ -2,7 +2,7 @@
   "manifest_version": 2,
   "name": "ClickTabUniq",
   "version": "1.1.0",
-  "description": "Close duplicated tabs from right click menu on tabs.\n\nYou can close duplicated tabs based on URL or title.\nPinned tabs are not closed.\n\nIn options, you can select items displayed on menu.",
+  "description": "Close duplicate tabs from right click menu on tabs.\n\nYou can close duplicate tabs based on URL or title.\nPinned tabs are not closed.\n\nIn options, you can select items displayed on menu.",
   "applications": {
     "gecko": {
       "id": "{e3e32590-2c56-405d-9f0f-9dc571a87d67}",
