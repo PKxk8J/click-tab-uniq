@@ -1,28 +1,57 @@
 'use strict'
 
-chrome.contextMenus.create({
-  id: 'uniq',
-  title: browser.i18n.getMessage('uniq'),
-  contexts: ['tab']
-})
+const LABEL_UNIQ = browser.i18n.getMessage('uniq')
+const LABEL_TITLE = browser.i18n.getMessage('title')
 
-chrome.contextMenus.create({
-  id: 'url',
-  title: 'URL',
-  contexts: ['tab'],
-  parentId: 'uniq'
-})
-
-chrome.contextMenus.create({
-  id: 'title',
-  title: browser.i18n.getMessage('title'),
-  contexts: ['tab'],
-  parentId: 'uniq'
-})
+const storage = browser.storage.sync
 
 function onError (error) {
   console.error('Error: ' + error)
 }
+
+function changeSetting (result) {
+  const urlOn = typeof result.url === 'undefined' || result.url
+  const titleOn = typeof result.title === 'undefined' || result.title
+
+  // 一旦、全削除してから追加する
+  const removing = browser.contextMenus.removeAll()
+  removing.then(() => {
+    console.log('Clear items')
+
+    if (urlOn || titleOn) {
+      console.log('Add ' + LABEL_UNIQ + ' item')
+      browser.contextMenus.create({
+        id: 'uniq',
+        title: LABEL_UNIQ,
+        contexts: ['tab']
+      })
+    }
+
+    function setKeyItem (on, id, title) {
+      if (on) {
+        browser.contextMenus.create({
+          id,
+          title,
+          contexts: ['tab'],
+          parentId: 'uniq'
+        }, () => console.log('Add ' + title + ' item'))
+      }
+    }
+
+    setKeyItem(urlOn, 'url', 'URL')
+    setKeyItem(titleOn, 'title', LABEL_TITLE)
+  }, onError)
+}
+
+const getting = storage.get()
+getting.then(changeSetting, onError)
+browser.storage.onChanged.addListener((changes, area) => {
+  const result = {
+    url: changes.url.newValue,
+    title: changes.title.newValue
+  }
+  changeSetting(result)
+})
 
 // タブのパラメータから重複を判定するキーを取り出す関数を受け取り、
 // 重複するタブを削除する関数をつくる
