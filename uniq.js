@@ -12,6 +12,13 @@ const LABEL_CLOSING = i18n.getMessage('closing')
 
 let notificationOn = false
 
+const DEBUG = i18n.getMessage('debug')
+function debug (message) {
+  if (DEBUG === 'debug') {
+    console.log(message)
+  }
+}
+
 function onError (error) {
   console.error('Error: ' + error)
 }
@@ -22,7 +29,7 @@ function addMenuItem (id, title, parentId) {
     title,
     contexts: ['tab'],
     parentId
-  }, () => console.log('Added ' + title + ' menu item'))
+  }, () => debug('Added ' + title + ' menu item'))
 }
 
 function changeMenu (result) {
@@ -31,7 +38,7 @@ function changeMenu (result) {
   // 一旦、全削除してから追加する
   const removing = contextMenus.removeAll()
   removing.then(() => {
-    console.log('Clear menu items')
+    debug('Clear menu items')
 
     if (urlOn && titleOn) {
       addMenuItem('uniq', LABEL_UNIQ)
@@ -97,7 +104,7 @@ function makeUniqer (keyGetter) {
         }
 
         removeIds.push(tab.id)
-        console.log('Tab ' + tab.id + ' will be removed: ' + key)
+        debug('Tab ' + tab.id + ' will be removed: ' + key)
       }
 
       const removing = tabs.remove(removeIds)
@@ -123,7 +130,7 @@ function uniq (comparator) {
     makeUniqer(comparator)((success, nTabs, nCloseTabs) => {
       const seconds = (new Date() - start) / 1000
       const message = getResultMessage(success, seconds, nTabs, nCloseTabs)
-      console.log(message)
+      debug(message)
     })
     return
   }
@@ -137,13 +144,13 @@ function uniq (comparator) {
     makeUniqer(comparator)((success, nTabs, nCloseTabs) => {
       const seconds = (new Date() - start) / 1000
       const message = getResultMessage(success, seconds, nTabs, nCloseTabs)
-      console.log(message)
+      debug(message)
       const creatingEnd = notifications.create(NOTIFICATION_ID, {
         'type': 'basic',
         'title': NOTIFICATION_ID,
         message
       })
-      creatingEnd.then(() => console.log('End'), onError)
+      creatingEnd.then(() => debug('End'), onError)
     })
   }, onError)
 }
