@@ -1,4 +1,7 @@
 {
+  "name": {
+    "message": "ClickTabUniq"
+  },
   "uniq": {
     "message": "Close Duplicates"
   },
@@ -11,7 +14,44 @@
   "title": {
     "message": "Title"
   },
+  "notification": {
+    "message": "Notification"
+  },
+  "menuItem": {
+    "message": "Menu Items"
+  },
   "save": {
     "message": "Save"
+  },
+  "closing": {
+    "message": "Closing..."
+  },
+  "successMessage": {
+    "message": "Completed in $TIME$ seconds.\n$CLOSED$ of $ALL$ tabs were closed.",
+    "placeholders": {
+      "time": {
+        "content": "$1"
+      },
+      "all": {
+        "content": "$2"
+      },
+      "closed": {
+        "content": "$3"
+      }
+    }
+  },
+  "failureMessage": {
+    "message": "Failed in $TIME$ seconds.\n$CLOSED$ of $ALL$ tabs were closed.",
+    "placeholders": {
+      "time": {
+        "content": "$1"
+      },
+      "all": {
+        "content": "$2"
+      },
+      "closed": {
+        "content": "$3"
+      }
+    }
   }
 }

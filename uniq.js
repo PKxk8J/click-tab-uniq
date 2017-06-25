@@ -1,11 +1,16 @@
 'use strict'
 
-const { contextMenus, i18n, storage, tabs } = browser
+const { contextMenus, i18n, notifications, storage, tabs } = browser
 const storageArea = storage.sync
+
+const NOTIFICATION_ID = i18n.getMessage('name')
 
 const LABEL_UNIQ = i18n.getMessage('uniq')
 const LABEL_URL = i18n.getMessage('url')
 const LABEL_TITLE = i18n.getMessage('title')
+const LABEL_CLOSING = i18n.getMessage('closing')
+
+let notificationOn = false
 
 function onError (error) {
   console.error('Error: ' + error)
@@ -40,20 +45,34 @@ function changeMenu (result) {
   }, onError)
 }
 
+// 設定を反映させる
+function applySetting (result) {
+  notificationOn = result.notification
+  changeMenu(result)
+}
+
+// リアルタイムで設定を反映させる
 const getting = storageArea.get()
-getting.then(changeMenu, onError)
+getting.then(applySetting, onError)
 storage.onChanged.addListener((changes, area) => {
   const result = {
     url: changes.url.newValue,
-    title: changes.title.newValue
+    title: changes.title.newValue,
+    notification: changes.notification.newValue
   }
-  changeMenu(result)
+  applySetting(result)
 })
 
 // タブのパラメータから重複を判定するキーを取り出す関数を受け取り、
 // 重複するタブを削除する関数をつくる
 function makeUniqer (keyGetter) {
-  return () => {
+  return (callback) => {
+    function onUniqError (error, nTabs, nCloseTabs) {
+      onError(error)
+      const success = false
+      callback(success, nTabs, nCloseTabs)
+    }
+
     const querying = tabs.query({currentWindow: true})
     querying.then((tabList) => {
       const keys = new Set()
@@ -81,24 +100,62 @@ function makeUniqer (keyGetter) {
         console.log('Tab ' + tab.id + ' will be removed: ' + key)
       }
 
-      if (removeIds.length === 0) {
-        return
-      }
-
       const removing = tabs.remove(removeIds)
-      removing.then(() => console.log('Tabs ' + removeIds + ' were removed'), onError)
-    }, onError)
+      removing.then(() => {
+        const success = true
+        callback(success, tabList.length, removeIds.length)
+      }, onError)
+    }, (error) => {
+      onUniqError(error, -1, -1)
+    })
   }
+}
+
+function getResultMessage (success, seconds, nTabs, nCloseTabs) {
+  const key = (success ? 'successMessage' : 'failureMessage')
+  return i18n.getMessage(key, [seconds, nTabs, nCloseTabs])
+}
+
+function uniq (comparator) {
+  const start = new Date()
+
+  if (!notificationOn) {
+    makeUniqer(comparator)((success, nTabs, nCloseTabs) => {
+      const seconds = (new Date() - start) / 1000
+      const message = getResultMessage(success, seconds, nTabs, nCloseTabs)
+      console.log(message)
+    })
+    return
+  }
+
+  const creatingStart = notifications.create(NOTIFICATION_ID, {
+    'type': 'basic',
+    'title': NOTIFICATION_ID,
+    message: LABEL_CLOSING
+  })
+  creatingStart.then(() => {
+    makeUniqer(comparator)((success, nTabs, nCloseTabs) => {
+      const seconds = (new Date() - start) / 1000
+      const message = getResultMessage(success, seconds, nTabs, nCloseTabs)
+      console.log(message)
+      const creatingEnd = notifications.create(NOTIFICATION_ID, {
+        'type': 'basic',
+        'title': NOTIFICATION_ID,
+        message
+      })
+      creatingEnd.then(() => console.log('End'), onError)
+    })
+  }, onError)
 }
 
 contextMenus.onClicked.addListener((info, tab) => {
   switch (info.menuItemId) {
     case 'url': {
-      makeUniqer((tab) => tab.url)()
+      uniq((tab) => tab.url)
       break
     }
     case 'title': {
-      makeUniqer((tab) => tab.title)()
+      uniq((tab) => tab.title)
       break
     }
   }

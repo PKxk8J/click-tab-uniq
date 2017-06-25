@@ -8,7 +8,44 @@
   "title": {
     "message": "タイトル"
   },
+  "notification": {
+    "message": "通知"
+  },
+  "menuItem": {
+    "message": "メニュー項目"
+  },
   "save": {
     "message": "保存"
+  },
+  "closing": {
+    "message": "重複削除中..."
+  },
+  "successMessage": {
+    "message": "重複削除完了: $TIME$秒\n$ALL$個中$CLOSED$個のタブを閉じました",
+    "placeholders": {
+      "time": {
+        "content": "$1"
+      },
+      "all": {
+        "content": "$2"
+      },
+      "closed": {
+        "content": "$3"
+      }
+    }
+  },
+  "failureMessage": {
+    "message": "重複削除失敗: $TIME$秒\n$ALL$個中$CLOSED$個のタブを閉じました",
+    "placeholders": {
+      "time": {
+        "content": "$1"
+      },
+      "all": {
+        "content": "$2"
+      },
+      "closed": {
+        "content": "$3"
+      }
+    }
   }
 }
