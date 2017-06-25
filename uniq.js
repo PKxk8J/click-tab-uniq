@@ -45,20 +45,22 @@ function changeMenu (result) {
   }, onError)
 }
 
-function changeSetting (result) {
+// 設定を反映させる
+function applySetting (result) {
   notificationOn = result.notification
   changeMenu(result)
 }
 
+// リアルタイムで設定を反映させる
 const getting = storageArea.get()
-getting.then(changeSetting, onError)
+getting.then(applySetting, onError)
 storage.onChanged.addListener((changes, area) => {
   const result = {
     url: changes.url.newValue,
     title: changes.title.newValue,
     notification: changes.notification.newValue
   }
-  changeSetting(result)
+  applySetting(result)
 })
 
 // タブのパラメータから重複を判定するキーを取り出す関数を受け取り、
