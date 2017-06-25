@@ -1,6 +1,6 @@
 {
   "manifest_version": 2,
-  "name": "ClickTabUniq",
+  "name": "__MSG_name__",
   "version": "1.1.1",
   "description": "Close duplicate tabs from right click menu on tabs.\n\nYou can close duplicate tabs based on URL or title.\nPinned tabs are not closed.\n\nIn options, you can select items displayed on menu.",
   "applications": {
@@ -12,7 +12,8 @@
   "permissions": [
     "tabs",
     "contextMenus",
-    "storage"
+    "storage",
+    "notifications"
   ],
   "background": {
     "scripts": [
