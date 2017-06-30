@@ -28,10 +28,10 @@
     "message": "Save"
   },
   "closing": {
-    "message": "Closing..."
+    "message": "Closing duplicate tabs..."
   },
   "successMessage": {
-    "message": "Completed in $TIME$ seconds.\n$CLOSED$ of $ALL$ tabs were closed.",
+    "message": "Closing duplicate tabs completed in $TIME$ seconds.\n$CLOSED$ of $ALL$ tabs were closed.",
     "placeholders": {
       "time": {
         "content": "$1"
@@ -45,7 +45,7 @@
     }
   },
   "failureMessage": {
-    "message": "Failed in $TIME$ seconds.\n$CLOSED$ of $ALL$ tabs were closed.",
+    "message": "Closing duplicate tabs failed in $TIME$ seconds.\n$CLOSED$ of $ALL$ tabs were closed.",
     "placeholders": {
       "time": {
         "content": "$1"
