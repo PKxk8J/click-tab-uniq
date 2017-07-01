@@ -3,16 +3,20 @@
 const { contextMenus, i18n, notifications, storage, tabs } = browser
 const storageArea = storage.sync
 
-const NOTIFICATION_ID = i18n.getMessage('name')
+const KEY_DEBUG = 'debug'
 
-const LABEL_UNIQ = i18n.getMessage('uniq')
-const LABEL_URL = i18n.getMessage('url')
-const LABEL_TITLE = i18n.getMessage('title')
-const LABEL_CLOSING = i18n.getMessage('closing')
+const KEY_URL = 'url'
+const KEY_TITLE = 'title'
+const KEY_NOTIFICATION = 'notification'
 
+const KEY_NAME = 'name'
+const KEY_UNIQ = 'uniq'
+const KEY_CLOSING = 'closing'
+
+const NOTIFICATION_ID = i18n.getMessage(KEY_NAME)
 let notificationOn = false
 
-const DEBUG = (i18n.getMessage('debug') === 'debug')
+const DEBUG = (i18n.getMessage(KEY_DEBUG) === 'debug')
 function debug (message) {
   if (DEBUG) {
     console.log(message)
@@ -23,6 +27,15 @@ function onError (error) {
   console.error('Error: ' + error)
 }
 
+// bool が undefined でなく false のときだけ false になるように
+function falseIffFalse (bool) {
+  if (typeof bool === 'undefined') {
+    return true
+  }
+  return bool
+}
+
+// 右クリックメニューに項目を追加する
 function addMenuItem (id, title, parentId) {
   contextMenus.create({
     id,
@@ -32,29 +45,51 @@ function addMenuItem (id, title, parentId) {
   }, () => debug('Added ' + title + ' menu item'))
 }
 
+// 右クリックメニューの変更
 function changeMenu (result) {
-  const { url: urlOn = true, title: titleOn = true } = result
+  const flags = [
+    { key: KEY_URL, on: falseIffFalse(result[KEY_URL]) },
+    { key: KEY_TITLE, on: falseIffFalse(result[KEY_TITLE]) }
+  ]
 
   // 一旦、全削除してから追加する
   const removing = contextMenus.removeAll()
   removing.then(() => {
     debug('Clear menu items')
 
-    if (urlOn && titleOn) {
-      addMenuItem('uniq', LABEL_UNIQ)
-      addMenuItem('url', LABEL_URL, 'uniq')
-      addMenuItem('title', LABEL_TITLE, 'uniq')
-    } else if (urlOn) {
-      addMenuItem('url', i18n.getMessage('uniqBy', LABEL_URL))
-    } else if (titleOn) {
-      addMenuItem('title', i18n.getMessage('uniqBy', LABEL_TITLE))
+    let count = 0
+    let sample
+    for (let flag of flags) {
+      if (flag.on) {
+        count++
+        sample = flag
+      }
+    }
+
+    switch (count) {
+      case 0: {
+        break
+      }
+      case 1: {
+        // 1 つだけのときはフラットメニュー
+        addMenuItem(sample.key, i18n.getMessage('uniqBy', i18n.getMessage(sample.key)))
+        break
+      }
+      default: {
+        addMenuItem(KEY_UNIQ, i18n.getMessage(KEY_UNIQ))
+        for (let flag of flags) {
+          if (flag.on) {
+            addMenuItem(flag.key, i18n.getMessage(flag.key), KEY_UNIQ)
+          }
+        }
+      }
     }
   }, onError)
 }
 
 // 設定を反映させる
 function applySetting (result) {
-  notificationOn = result.notification
+  notificationOn = result[KEY_NOTIFICATION]
   changeMenu(result)
 }
 
@@ -62,11 +97,8 @@ function applySetting (result) {
 const getting = storageArea.get()
 getting.then(applySetting, onError)
 storage.onChanged.addListener((changes, area) => {
-  const result = {
-    url: changes.url.newValue,
-    title: changes.title.newValue,
-    notification: changes.notification.newValue
-  }
+  const result = {}
+  Object.keys(changes).forEach((key) => { result[key] = changes[key].newValue })
   applySetting(result)
 })
 
@@ -138,7 +170,7 @@ function uniq (comparator) {
   const creatingStart = notifications.create(NOTIFICATION_ID, {
     'type': 'basic',
     'title': NOTIFICATION_ID,
-    message: LABEL_CLOSING
+    message: i18n.getMessage(KEY_CLOSING)
   })
   creatingStart.then(() => {
     makeUniqer(comparator)((success, nTabs, nCloseTabs) => {
@@ -157,11 +189,11 @@ function uniq (comparator) {
 
 contextMenus.onClicked.addListener((info, tab) => {
   switch (info.menuItemId) {
-    case 'url': {
+    case KEY_URL: {
       uniq((tab) => tab.url)
       break
     }
-    case 'title': {
+    case KEY_TITLE: {
       uniq((tab) => tab.title)
       break
     }
