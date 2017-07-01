@@ -116,12 +116,20 @@ function makeUniqer (keyGetter) {
     querying.then((tabList) => {
       const keys = new Set()
 
-      // ピン留めされているタブを先に調べる
+      // ピン留めされているタブとフォーカスのあるタブを先に調べる
+      let activeKey
       for (let tab of tabList) {
         if (tab.pinned) {
           keys.add(keyGetter(tab))
         }
+        if (tab.active) {
+          activeKey = keyGetter(tab)
+        }
       }
+
+      // 同じタブがピン留めされていないなら、フォーカスのあるタブは閉じない
+      const ignoreActive = !keys.has(activeKey)
+      keys.add(activeKey)
 
       const removeIds = []
       for (let tab of tabList) {
@@ -132,6 +140,8 @@ function makeUniqer (keyGetter) {
         const key = keyGetter(tab)
         if (!keys.has(key)) {
           keys.add(key)
+          continue
+        } if (tab.active && ignoreActive) {
           continue
         }
 
