@@ -11,6 +11,7 @@ const KEY_NOTIFICATION = 'notification'
 
 const KEY_NAME = 'name'
 const KEY_UNIQ = 'uniq'
+const KEY_UNIQ_BY = 'uniqBy'
 const KEY_CLOSING = 'closing'
 
 const NOTIFICATION_ID = i18n.getMessage(KEY_NAME)
@@ -78,7 +79,7 @@ function changeMenu (result) {
       }
       case 1: {
         // 1 つだけのときはフラットメニュー
-        addMenuItem(sample.key, i18n.getMessage('uniqBy', i18n.getMessage(sample.key)))
+        addMenuItem(sample.key, i18n.getMessage(KEY_UNIQ_BY, i18n.getMessage(sample.key)))
         break
       }
       default: {
