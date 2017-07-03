@@ -1,6 +1,6 @@
 'use strict'
 
-const { contextMenus, i18n, notifications, storage, tabs } = browser
+const { contextMenus, i18n, notifications, runtime, storage, tabs } = browser
 const storageArea = storage.sync
 
 const KEY_DEBUG = 'debug'
@@ -11,6 +11,7 @@ const KEY_NOTIFICATION = 'notification'
 
 const KEY_NAME = 'name'
 const KEY_UNIQ = 'uniq'
+const KEY_UNIQ_BY = 'uniqBy'
 const KEY_CLOSING = 'closing'
 
 const NOTIFICATION_ID = i18n.getMessage(KEY_NAME)
@@ -42,7 +43,13 @@ function addMenuItem (id, title, parentId) {
     title,
     contexts: ['tab'],
     parentId
-  }, () => debug('Added ' + title + ' menu item'))
+  }, () => {
+    if (runtime.lastError) {
+      onError(runtime.lastError)
+    } else {
+      debug('Added ' + title + ' menu item')
+    }
+  })
 }
 
 // 右クリックメニューの変更
@@ -72,7 +79,7 @@ function changeMenu (result) {
       }
       case 1: {
         // 1 つだけのときはフラットメニュー
-        addMenuItem(sample.key, i18n.getMessage('uniqBy', i18n.getMessage(sample.key)))
+        addMenuItem(sample.key, i18n.getMessage(KEY_UNIQ_BY, i18n.getMessage(sample.key)))
         break
       }
       default: {

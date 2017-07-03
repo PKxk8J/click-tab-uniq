@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "__MSG_name__",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "description": "Close duplicate tabs from right click menu on tabs.\n\nYou can close duplicate tabs based on URL or title.\nPinned tabs are not closed.\n\nIn options, you can select items displayed on menu.",
   "applications": {
     "gecko": {
