@@ -35,17 +35,6 @@
     }
   },
   "failureMessage": {
-    "message": "重複削除失敗: $TIME$秒\n$ALL$個中$CLOSED$個のタブを削除",
-    "placeholders": {
-      "time": {
-        "content": "$1"
-      },
-      "all": {
-        "content": "$2"
-      },
-      "closed": {
-        "content": "$3"
-      }
-    }
+    "message": "重複削除失敗\n$1"
   }
 }

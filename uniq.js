@@ -14,8 +14,11 @@ const KEY_UNIQ = 'uniq'
 const KEY_UNIQ_BY = 'uniqBy'
 const KEY_CLOSING = 'closing'
 
+const KEY_SUCCESS_MESSAGE = 'successMessage'
+const KEY_FAILURE_MESSAGE = 'failureMessage'
+
 const NOTIFICATION_ID = i18n.getMessage(KEY_NAME)
-let notificationOn = false
+let notification = false
 
 const DEBUG = (i18n.getMessage(KEY_DEBUG) === 'debug')
 function debug (message) {
@@ -25,7 +28,7 @@ function debug (message) {
 }
 
 function onError (error) {
-  console.error('Error: ' + error)
+  console.error(error)
 }
 
 // bool が undefined でなく false のときだけ false になるように
@@ -53,166 +56,144 @@ function addMenuItem (id, title, parentId) {
 }
 
 // 右クリックメニューの変更
-function changeMenu (result) {
-  const flags = [
-    { key: KEY_URL, on: falseIffFalse(result[KEY_URL]) },
-    { key: KEY_TITLE, on: falseIffFalse(result[KEY_TITLE]) }
-  ]
+async function changeMenu (result) {
+  const menuKeys = []
+
+  if (falseIffFalse(result[KEY_URL])) {
+    menuKeys.push(KEY_URL)
+  }
+  if (falseIffFalse(result[KEY_TITLE])) {
+    menuKeys.push(KEY_TITLE)
+  }
 
   // 一旦、全削除してから追加する
-  const removing = contextMenus.removeAll()
-  removing.then(() => {
-    debug('Clear menu items')
+  await contextMenus.removeAll()
+  debug('Clear menu items')
 
-    let count = 0
-    let sample
-    for (let flag of flags) {
-      if (flag.on) {
-        count++
-        sample = flag
-      }
+  switch (menuKeys.length) {
+    case 0: {
+      break
     }
-
-    switch (count) {
-      case 0: {
-        break
-      }
-      case 1: {
-        // 1 つだけのときはフラットメニュー
-        addMenuItem(sample.key, i18n.getMessage(KEY_UNIQ_BY, i18n.getMessage(sample.key)))
-        break
-      }
-      default: {
-        addMenuItem(KEY_UNIQ, i18n.getMessage(KEY_UNIQ))
-        for (let flag of flags) {
-          if (flag.on) {
-            addMenuItem(flag.key, i18n.getMessage(flag.key), KEY_UNIQ)
-          }
-        }
-      }
+    case 1: {
+      // 1 つだけのときはフラットメニュー
+      const key = menuKeys[0]
+      addMenuItem(key, i18n.getMessage(KEY_UNIQ_BY, i18n.getMessage(key)))
+      break
     }
-  }, onError)
+    default: {
+      addMenuItem(KEY_UNIQ, i18n.getMessage(KEY_UNIQ))
+      menuKeys.forEach((key) => addMenuItem(key, i18n.getMessage(key), KEY_UNIQ))
+    }
+  }
 }
 
 // 設定を反映させる
-function applySetting (result) {
-  notificationOn = result[KEY_NOTIFICATION]
-  changeMenu(result)
+async function applySetting (result) {
+  debug('Apply ' + JSON.stringify(result))
+  notification = result[KEY_NOTIFICATION]
+  await changeMenu(result)
 }
 
 // リアルタイムで設定を反映させる
-const getting = storageArea.get()
-getting.then(applySetting, onError)
-storage.onChanged.addListener((changes, area) => {
+storage.onChanged.addListener((changes, area) => (async function () {
   const result = {}
   Object.keys(changes).forEach((key) => { result[key] = changes[key].newValue })
-  applySetting(result)
-})
+  await applySetting(result)
+})().catch(onError))
 
-// タブのパラメータから重複を判定するキーを取り出す関数を受け取り、
-// 重複するタブを削除する関数をつくる
-function makeUniqer (keyGetter) {
-  return (callback) => {
-    function onUniqError (error, nTabs, nCloseTabs) {
-      onError(error)
-      const success = false
-      callback(success, nTabs, nCloseTabs)
+// 初期化
+;(async function () {
+  const result = await storageArea.get()
+  await applySetting(result)
+})().catch(onError)
+
+// 重複するタブを削除する
+async function uniq (keyGetter) {
+  const tabList = await tabs.query({currentWindow: true})
+
+  const keys = new Set()
+
+  // ピン留めされているタブとフォーカスのあるタブを先に調べる
+  let activeKey
+  for (const tab of tabList) {
+    if (tab.pinned) {
+      keys.add(keyGetter(tab))
+    }
+    if (tab.active) {
+      activeKey = keyGetter(tab)
+    }
+  }
+
+  // 同じタブがピン留めされていないなら、フォーカスのあるタブは閉じない
+  const ignoreActive = !keys.has(activeKey)
+  keys.add(activeKey)
+
+  const removeIds = []
+  for (const tab of tabList) {
+    if (tab.pinned) {
+      continue
     }
 
-    const querying = tabs.query({currentWindow: true})
-    querying.then((tabList) => {
-      const keys = new Set()
+    const key = keyGetter(tab)
+    if (!keys.has(key)) {
+      keys.add(key)
+      continue
+    } if (tab.active && ignoreActive) {
+      continue
+    }
 
-      // ピン留めされているタブとフォーカスのあるタブを先に調べる
-      let activeKey
-      for (let tab of tabList) {
-        if (tab.pinned) {
-          keys.add(keyGetter(tab))
-        }
-        if (tab.active) {
-          activeKey = keyGetter(tab)
-        }
-      }
+    removeIds.push(tab.id)
+    debug('Tab ' + tab.id + ' will be removed: ' + key)
+  }
 
-      // 同じタブがピン留めされていないなら、フォーカスのあるタブは閉じない
-      const ignoreActive = !keys.has(activeKey)
-      keys.add(activeKey)
-
-      const removeIds = []
-      for (let tab of tabList) {
-        if (tab.pinned) {
-          continue
-        }
-
-        const key = keyGetter(tab)
-        if (!keys.has(key)) {
-          keys.add(key)
-          continue
-        } if (tab.active && ignoreActive) {
-          continue
-        }
-
-        removeIds.push(tab.id)
-        debug('Tab ' + tab.id + ' will be removed: ' + key)
-      }
-
-      const removing = tabs.remove(removeIds)
-      removing.then(() => {
-        const success = true
-        callback(success, tabList.length, removeIds.length)
-      }, onError)
-    }, (error) => {
-      onUniqError(error, -1, -1)
-    })
+  await tabs.remove(removeIds)
+  return {
+    all: tabList.length,
+    closed: removeIds.length
   }
 }
 
-function getResultMessage (success, seconds, nTabs, nCloseTabs) {
-  const key = (success ? 'successMessage' : 'failureMessage')
-  return i18n.getMessage(key, [seconds, nTabs, nCloseTabs])
-}
-
-function uniq (comparator) {
-  const start = new Date()
-
-  if (!notificationOn) {
-    makeUniqer(comparator)((success, nTabs, nCloseTabs) => {
-      const seconds = (new Date() - start) / 1000
-      const message = getResultMessage(success, seconds, nTabs, nCloseTabs)
-      debug(message)
-    })
-    return
-  }
-
-  const creatingStart = notifications.create(NOTIFICATION_ID, {
+// 通知を表示する
+async function notify (message) {
+  await notifications.create(NOTIFICATION_ID, {
     'type': 'basic',
     'title': NOTIFICATION_ID,
-    message: i18n.getMessage(KEY_CLOSING)
+    message: message
   })
-  creatingStart.then(() => {
-    makeUniqer(comparator)((success, nTabs, nCloseTabs) => {
-      const seconds = (new Date() - start) / 1000
-      const message = getResultMessage(success, seconds, nTabs, nCloseTabs)
-      debug(message)
-      const creatingEnd = notifications.create(NOTIFICATION_ID, {
-        'type': 'basic',
-        'title': NOTIFICATION_ID,
-        message
-      })
-      creatingEnd.then(() => debug('End'), onError)
-    })
-  }, onError)
 }
 
-contextMenus.onClicked.addListener((info, tab) => {
+// 前後処理で挟む
+async function wrapUniq (keyGetter) {
+  if (notification) {
+    await notify(i18n.getMessage(KEY_CLOSING))
+  }
+
+  const start = new Date()
+  const {all, closed} = await uniq(keyGetter)
+  const seconds = (new Date() - start) / 1000
+  const message = i18n.getMessage(KEY_SUCCESS_MESSAGE, [seconds, all, closed])
+
+  debug(message)
+  if (notification) {
+    await notify(message)
+  }
+}
+
+// 右クリックメニューからの入力を処理
+contextMenus.onClicked.addListener((info, tab) => (async function () {
   switch (info.menuItemId) {
     case KEY_URL: {
-      uniq((tab) => tab.url)
+      await wrapUniq((tab) => tab.url)
       break
     }
     case KEY_TITLE: {
-      uniq((tab) => tab.title)
+      await wrapUniq((tab) => tab.title)
       break
     }
   }
-})
+})().catch((e) => {
+  onError(e)
+  if (notification) {
+    notify(i18n.getMessage(KEY_FAILURE_MESSAGE, e)).catch(onError)
+  }
+}))
