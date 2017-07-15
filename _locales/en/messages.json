@@ -45,17 +45,6 @@
     }
   },
   "failureMessage": {
-    "message": "Closing duplicate tabs failed in $TIME$ seconds.\n$CLOSED$ of $ALL$ tabs were closed.",
-    "placeholders": {
-      "time": {
-        "content": "$1"
-      },
-      "all": {
-        "content": "$2"
-      },
-      "closed": {
-        "content": "$3"
-      }
-    }
+    "message": "Closing duplicate tabs failed.\n$1"
   }
 }
