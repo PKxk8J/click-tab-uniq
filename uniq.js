@@ -94,22 +94,9 @@ async function applySetting (result) {
   await changeMenu(result)
 }
 
-// リアルタイムで設定を反映させる
-storage.onChanged.addListener((changes, area) => (async function () {
-  const result = {}
-  Object.keys(changes).forEach((key) => { result[key] = changes[key].newValue })
-  await applySetting(result)
-})().catch(onError))
-
-// 初期化
-;(async function () {
-  const result = await storageArea.get()
-  await applySetting(result)
-})().catch(onError)
-
 // 重複するタブを削除する
-async function uniq (keyGetter) {
-  const tabList = await tabs.query({currentWindow: true})
+async function uniq (windowId, keyGetter) {
+  const tabList = await tabs.query({windowId})
 
   const keys = new Set()
 
@@ -163,13 +150,13 @@ async function notify (message) {
 }
 
 // 前後処理で挟む
-async function wrapUniq (keyGetter) {
+async function wrapUniq (windowId, keyGetter) {
   if (notification) {
     await notify(i18n.getMessage(KEY_CLOSING))
   }
 
   const start = new Date()
-  const {all, closed} = await uniq(keyGetter)
+  const {all, closed} = await uniq(windowId, keyGetter)
   const seconds = (new Date() - start) / 1000
   const message = i18n.getMessage(KEY_SUCCESS_MESSAGE, [seconds, all, closed])
 
@@ -179,21 +166,34 @@ async function wrapUniq (keyGetter) {
   }
 }
 
-// 右クリックメニューからの入力を処理
-contextMenus.onClicked.addListener((info, tab) => (async function () {
-  switch (info.menuItemId) {
-    case KEY_URL: {
-      await wrapUniq((tab) => tab.url)
-      break
+// 初期化
+(async function () {
+  // リアルタイムで設定を反映させる
+  storage.onChanged.addListener((changes, area) => (async function () {
+    const result = {}
+    Object.keys(changes).forEach((key) => { result[key] = changes[key].newValue })
+    await applySetting(result)
+  })().catch(onError))
+
+  // 右クリックメニューからの入力を処理
+  contextMenus.onClicked.addListener((info, tab) => (async function () {
+    switch (info.menuItemId) {
+      case KEY_URL: {
+        await wrapUniq(tab.windowId, (tab) => tab.url)
+        break
+      }
+      case KEY_TITLE: {
+        await wrapUniq(tab.windowId, (tab) => tab.title)
+        break
+      }
     }
-    case KEY_TITLE: {
-      await wrapUniq((tab) => tab.title)
-      break
+  })().catch((e) => {
+    onError(e)
+    if (notification) {
+      notify(i18n.getMessage(KEY_FAILURE_MESSAGE, e)).catch(onError)
     }
-  }
-})().catch((e) => {
-  onError(e)
-  if (notification) {
-    notify(i18n.getMessage(KEY_FAILURE_MESSAGE, e)).catch(onError)
-  }
-}))
+  }))
+
+  const result = await storageArea.get()
+  await applySetting(result)
+})().catch(onError)
