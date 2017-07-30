@@ -7,18 +7,22 @@ const KEY_DEBUG = 'debug'
 
 const KEY_URL = 'url'
 const KEY_TITLE = 'title'
+
+const KEY_MENU_ITEM = 'menuItem'
 const KEY_NOTIFICATION = 'notification'
 
-const KEY_NAME = 'name'
 const KEY_UNIQ = 'uniq'
 const KEY_UNIQ_BY = 'uniqBy'
-const KEY_CLOSING = 'closing'
 
+const KEY_NAME = 'name'
+const KEY_CLOSING = 'closing'
 const KEY_SUCCESS_MESSAGE = 'successMessage'
 const KEY_FAILURE_MESSAGE = 'failureMessage'
 
+const DEFAULT_MENU_ITEM = [KEY_URL, KEY_TITLE]
+const DEFAULT_NOTIFICATION = false
+
 const NOTIFICATION_ID = i18n.getMessage(KEY_NAME)
-let notification = false
 
 const DEBUG = (i18n.getMessage(KEY_DEBUG) === 'debug')
 function debug (message) {
@@ -31,12 +35,12 @@ function onError (error) {
   console.error(error)
 }
 
-// bool が undefined でなく false のときだけ false になるように
-function falseIffFalse (bool) {
-  if (typeof bool === 'undefined') {
-    return true
-  }
-  return bool
+// 設定値を取得する
+async function getValue (key, defaultValue) {
+  const {
+    [key]: value = defaultValue
+  } = await storageArea.get(key)
+  return value
 }
 
 // 右クリックメニューに項目を追加する
@@ -56,42 +60,26 @@ function addMenuItem (id, title, parentId) {
 }
 
 // 右クリックメニューの変更
-async function changeMenu (result) {
-  const menuKeys = []
-
-  if (falseIffFalse(result[KEY_URL])) {
-    menuKeys.push(KEY_URL)
-  }
-  if (falseIffFalse(result[KEY_TITLE])) {
-    menuKeys.push(KEY_TITLE)
-  }
-
+async function changeMenu (menuItem) {
   // 一旦、全削除してから追加する
   await contextMenus.removeAll()
   debug('Clear menu items')
 
-  switch (menuKeys.length) {
+  switch (menuItem.length) {
     case 0: {
       break
     }
     case 1: {
       // 1 つだけのときはフラットメニュー
-      const key = menuKeys[0]
+      const key = menuItem[0]
       addMenuItem(key, i18n.getMessage(KEY_UNIQ_BY, i18n.getMessage(key)))
       break
     }
     default: {
       addMenuItem(KEY_UNIQ, i18n.getMessage(KEY_UNIQ))
-      menuKeys.forEach((key) => addMenuItem(key, i18n.getMessage(key), KEY_UNIQ))
+      menuItem.forEach((key) => addMenuItem(key, i18n.getMessage(key), KEY_UNIQ))
     }
   }
-}
-
-// 設定を反映させる
-async function applySetting (result) {
-  debug('Apply ' + JSON.stringify(result))
-  notification = result[KEY_NOTIFICATION]
-  await changeMenu(result)
 }
 
 // 重複するタブを削除する
@@ -151,6 +139,8 @@ async function notify (message) {
 
 // 前後処理で挟む
 async function wrapUniq (windowId, keyGetter) {
+  const notification = await getValue(KEY_NOTIFICATION, DEFAULT_NOTIFICATION)
+
   if (notification) {
     await notify(i18n.getMessage(KEY_CLOSING))
   }
@@ -170,9 +160,10 @@ async function wrapUniq (windowId, keyGetter) {
 (async function () {
   // リアルタイムで設定を反映させる
   storage.onChanged.addListener((changes, area) => (async function () {
-    const result = {}
-    Object.keys(changes).forEach((key) => { result[key] = changes[key].newValue })
-    await applySetting(result)
+    const menuItem = changes[KEY_MENU_ITEM]
+    if (menuItem) {
+      await changeMenu(menuItem.newValue)
+    }
   })().catch(onError))
 
   // 右クリックメニューからの入力を処理
@@ -187,13 +178,15 @@ async function wrapUniq (windowId, keyGetter) {
         break
       }
     }
-  })().catch((e) => {
+  })().catch((e) => (async function () {
     onError(e)
-    if (notification) {
-      notify(i18n.getMessage(KEY_FAILURE_MESSAGE, e)).catch(onError)
-    }
-  }))
 
-  const result = await storageArea.get()
-  await applySetting(result)
+    const notification = await getValue(KEY_NOTIFICATION, DEFAULT_NOTIFICATION)
+    if (notification) {
+      await notify(i18n.getMessage(KEY_FAILURE_MESSAGE, e))
+    }
+  })().catch(onError)))
+
+  const menuItem = await getValue(KEY_MENU_ITEM, DEFAULT_MENU_ITEM)
+  await changeMenu(menuItem)
 })().catch(onError)
