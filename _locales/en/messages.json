@@ -7,10 +7,10 @@
     "message": "ClickTabUniq"
   },
   "uniq": {
-    "message": "Close Duplicates"
+    "message": "Close Duplicate Tabs"
   },
   "uniqBy": {
-    "message": "Close Duplicates in $1"
+    "message": "Close Duplicate Tabs in $1"
   },
   "url": {
     "message": "URL"
