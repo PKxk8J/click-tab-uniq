@@ -59,6 +59,12 @@ function addMenuItem (id, title, parentId) {
   })
 }
 
+// 重複検査キーの取得関数
+const KEY_GETTERS = {
+  [KEY_URL]: (tab) => tab.url,
+  [KEY_TITLE]: (tab) => tab.title
+}
+
 // 右クリックメニューの変更
 async function changeMenu (menuItem) {
   // 一旦、全削除してから追加する
@@ -138,21 +144,26 @@ async function notify (message) {
 }
 
 // 前後処理で挟む
-async function wrapUniq (windowId, keyGetter) {
-  const notification = await getValue(KEY_NOTIFICATION, DEFAULT_NOTIFICATION)
+async function wrapUniq (windowId, keyType, notification) {
+  try {
+    if (notification) {
+      await notify(i18n.getMessage(KEY_CLOSING))
+    }
 
-  if (notification) {
-    await notify(i18n.getMessage(KEY_CLOSING))
-  }
+    const start = new Date()
+    const {all, closed} = await uniq(windowId, KEY_GETTERS[keyType])
+    const seconds = (new Date() - start) / 1000
+    const message = i18n.getMessage(KEY_SUCCESS_MESSAGE, [seconds, all, closed])
 
-  const start = new Date()
-  const {all, closed} = await uniq(windowId, keyGetter)
-  const seconds = (new Date() - start) / 1000
-  const message = i18n.getMessage(KEY_SUCCESS_MESSAGE, [seconds, all, closed])
-
-  debug(message)
-  if (notification) {
-    await notify(message)
+    debug(message)
+    if (notification) {
+      await notify(message)
+    }
+  } catch (e) {
+    onError(e)
+    if (notification) {
+      await notify(i18n.getMessage(KEY_FAILURE_MESSAGE, e))
+    }
   }
 }
 
@@ -166,26 +177,32 @@ async function wrapUniq (windowId, keyGetter) {
     }
   })().catch(onError))
 
-  // 右クリックメニューからの入力を処理
+  // 右クリックメニューから実行
   contextMenus.onClicked.addListener((info, tab) => (async function () {
     switch (info.menuItemId) {
-      case KEY_URL: {
-        await wrapUniq(tab.windowId, (tab) => tab.url)
-        break
-      }
+      case KEY_URL:
       case KEY_TITLE: {
-        await wrapUniq(tab.windowId, (tab) => tab.title)
+        const notification = await getValue(KEY_NOTIFICATION, DEFAULT_NOTIFICATION)
+        await wrapUniq(tab.windowId, info.menuItemId, notification)
         break
       }
     }
-  })().catch((e) => (async function () {
-    onError(e)
+  })().catch(onError))
 
-    const notification = await getValue(KEY_NOTIFICATION, DEFAULT_NOTIFICATION)
-    if (notification) {
-      await notify(i18n.getMessage(KEY_FAILURE_MESSAGE, e))
+  // メッセージから実行
+  runtime.onMessageExternal.addListener((message, sender, sendResponse) => (async function () {
+    debug('Message ' + JSON.stringify(message) + ' was received')
+    switch (message.type) {
+      case KEY_UNIQ: {
+        const {
+          windowId,
+          keyType,
+          notification
+        } = message
+        await wrapUniq(windowId, keyType, notification)
+      }
     }
-  })().catch(onError)))
+  })().catch(onError))
 
   const menuItem = await getValue(KEY_MENU_ITEM, DEFAULT_MENU_ITEM)
   await changeMenu(menuItem)
