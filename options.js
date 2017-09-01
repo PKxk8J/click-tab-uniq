@@ -18,8 +18,8 @@ const LABEL_KEYS = MENU_ITEM_KEYS.concat([KEY_MENU_ITEM, KEY_NOTIFICATION, KEY_S
 
 /*
  * {
- *    "menuItem": ["url", "title", ...],
- *    "notification": true
+ *   "menuItem": ["url", "title", ...],
+ *   "notification": true
  * }
  */
 
