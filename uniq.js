@@ -195,8 +195,8 @@ async function wrapUniq (windowId, keyType, notification) {
     switch (message.type) {
       case KEY_UNIQ: {
         const {
-          windowId,
           keyType,
+          windowId,
           notification
         } = message
         await wrapUniq(windowId, keyType, notification)
