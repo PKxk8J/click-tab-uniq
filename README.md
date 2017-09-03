@@ -9,7 +9,7 @@ https://addons.mozilla.org/addon/clicktabuniq/
 
 ## <span id="messaging"/> Messaging
 
-Other addons can use this addon by using [sendMessage](https://developer.mozilla.org/en-US/Add-ons/WebExtensions/API/runtime/sendMessage)
+Other addons can use this addon by using [sendMessage](https://developer.mozilla.org/Add-ons/WebExtensions/API/runtime/sendMessage)
 
 ```javascript
 browser.runtime.sendMessage('{e3e32590-2c56-405d-9f0f-9dc571a87d67}', {
