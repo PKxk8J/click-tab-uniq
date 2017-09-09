@@ -95,7 +95,7 @@ async function save () {
   })
 
   LABEL_KEYS.forEach((key) => {
-    document.getElementById('label_' + key).innerText = i18n.getMessage(key)
+    document.getElementById('label_' + key).textContent = ' ' + i18n.getMessage(key) + ' '
   })
 
   document.addEventListener('DOMContentLoaded', () => restore().catch(onError))
