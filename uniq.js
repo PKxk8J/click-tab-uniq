@@ -1,39 +1,30 @@
 'use strict'
 
-const { contextMenus, i18n, notifications, runtime, storage, tabs } = browser
-const storageArea = storage.sync
-
-const KEY_DEBUG = 'debug'
-
-const KEY_URL = 'url'
-const KEY_TITLE = 'title'
-
-const KEY_MENU_ITEM = 'menuItem'
-const KEY_NOTIFICATION = 'notification'
-
-const KEY_UNIQ = 'uniq'
-const KEY_UNIQ_BY = 'uniqBy'
-
-const KEY_NAME = 'name'
-const KEY_CLOSING = 'closing'
-const KEY_SUCCESS_MESSAGE = 'successMessage'
-const KEY_FAILURE_MESSAGE = 'failureMessage'
-
-const DEFAULT_MENU_ITEM = [KEY_URL, KEY_TITLE]
-const DEFAULT_NOTIFICATION = false
-
-const NOTIFICATION_ID = i18n.getMessage(KEY_NAME)
-
-const DEBUG = (i18n.getMessage(KEY_DEBUG) === 'debug')
-function debug (message) {
-  if (DEBUG) {
-    console.log(message)
-  }
-}
-
-function onError (error) {
-  console.error(error)
-}
+const {
+  contextMenus,
+  i18n,
+  notifications,
+  runtime,
+  storage,
+  tabs
+} = browser
+const {
+  storageArea,
+  KEY_URL,
+  KEY_TITLE,
+  KEY_UNIQ,
+  KEY_UNIQ_BY,
+  KEY_MENU_ITEM,
+  KEY_NOTIFICATION,
+  KEY_CLOSING,
+  KEY_SUCCESS_MESSAGE,
+  KEY_FAILURE_MESSAGE,
+  DEFAULT_MENU_ITEM,
+  DEFAULT_NOTIFICATION,
+  NOTIFICATION_ID,
+  debug,
+  onError
+} = common
 
 // 設定値を取得する
 async function getValue (key, defaultValue) {
