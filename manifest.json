@@ -17,7 +17,10 @@
   ],
   "background": {
     "scripts": [
-      "uniq.js"
+      "common.js",
+      "uniq.js",
+      "messaging.js",
+      "menu.js"
     ]
   },
   "default_locale": "en",
