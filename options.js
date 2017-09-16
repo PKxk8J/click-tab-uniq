@@ -88,5 +88,5 @@ async function save () {
   })
 
   document.addEventListener('DOMContentLoaded', () => restore().catch(onError))
-  document.getElementById('save').addEventListener('click', (e) => save().catch(onError))
+  document.getElementById(KEY_SAVE).addEventListener('click', (e) => save().catch(onError))
 })().catch(onError)

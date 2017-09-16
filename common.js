@@ -1,6 +1,6 @@
 'use strict'
 
-let _export
+var _export
 
 {
   const {
@@ -15,8 +15,10 @@ let _export
 
   const DEBUG = (i18n.getMessage(KEY_DEBUG) === 'debug')
 
+  const storageArea = storage.sync
+
   const params = {
-    storageArea: storage.sync,
+    storageArea,
     KEY_URL,
     KEY_TITLE,
     KEY_UNIQ: 'uniq',
@@ -43,9 +45,18 @@ let _export
     console.error(error)
   }
 
+  // 設定値を取得する
+  async function getValue (key, defaultValue) {
+    const {
+      [key]: value = defaultValue
+    } = await storageArea.get(key)
+    return value
+  }
+
   _export = Object.assign({
     debug,
-    onError
+    onError,
+    getValue
   }, params)
 }
 
