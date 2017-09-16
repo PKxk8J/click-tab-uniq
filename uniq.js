@@ -28,7 +28,7 @@ var _export
   }
 
   // 重複するタブを削除する
-  async function _uniq (windowId, keyGetter) {
+  async function run (windowId, keyGetter) {
     const tabList = await tabs.query({windowId})
 
     const keys = new Set()
@@ -83,14 +83,14 @@ var _export
   }
 
   // 前後処理で挟む
-  async function wrapUniq (windowId, keyType, notification) {
+  async function wrappedRun (windowId, keyType, notification) {
     try {
       if (notification) {
         await notify(i18n.getMessage(KEY_CLOSING))
       }
 
       const start = new Date()
-      const {all, closed} = await _uniq(windowId, KEY_GETTERS[keyType])
+      const {all, closed} = await run(windowId, KEY_GETTERS[keyType])
       const seconds = (new Date() - start) / 1000
       const message = i18n.getMessage(KEY_SUCCESS_MESSAGE, [seconds, all, closed])
 
@@ -106,7 +106,9 @@ var _export
     }
   }
 
-  _export = wrapUniq
+  _export = Object.freeze({
+    run: wrappedRun
+  })
 }
 
 const uniq = _export
