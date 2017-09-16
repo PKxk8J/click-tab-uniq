@@ -1,5 +1,7 @@
 'use strict'
 
+// 共通処理
+
 var _export
 
 {

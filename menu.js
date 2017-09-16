@@ -1,5 +1,7 @@
 'use strict'
 
+// 右クリックメニュー
+
 {
   const {
     contextMenus,

@@ -1,5 +1,7 @@
 'use strict'
 
+// メッセージインターフェース
+
 {
   const {
     runtime
