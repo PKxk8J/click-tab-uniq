@@ -22,6 +22,9 @@
     onError,
     getValue
   } = common
+  const {
+    run
+  } = uniq
 
   // 右クリックメニューに項目を追加する
   function addMenuItem (id, title, parentId) {
@@ -78,7 +81,7 @@
         case KEY_URL:
         case KEY_TITLE: {
           const notification = await getValue(KEY_NOTIFICATION, DEFAULT_NOTIFICATION)
-          await uniq(tab.windowId, info.menuItemId, notification)
+          await run(tab.windowId, info.menuItemId, notification)
           break
         }
       }
