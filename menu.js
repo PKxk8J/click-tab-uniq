@@ -10,8 +10,6 @@
     storage
   } = browser
   const {
-    KEY_URL,
-    KEY_TITLE,
     KEY_UNIQ,
     KEY_UNIQ_BY,
     KEY_MENU_ITEM,
