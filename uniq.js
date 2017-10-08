@@ -48,7 +48,7 @@ var _export
     const ignoreActive = !keys.has(activeKey)
     keys.add(activeKey)
 
-    const removeIds = []
+    let nClosed = 0
     for (const tab of tabList) {
       if (tab.pinned) {
         continue
@@ -62,14 +62,14 @@ var _export
         continue
       }
 
-      removeIds.push(tab.id)
-      debug('Tab ' + tab.id + ' will be removed: ' + key)
+      await tabs.remove(tab.id)
+      nClosed++
+      debug('Tab ' + tab.id + ' was closed: ' + key)
     }
 
-    await tabs.remove(removeIds)
     return {
       all: tabList.length,
-      closed: removeIds.length
+      closed: nClosed
     }
   }
 
