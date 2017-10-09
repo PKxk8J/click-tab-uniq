@@ -54,6 +54,7 @@ var _export
     DEFAULT_NOTIFICATION: false,
     NOTIFICATION_ID: i18n.getMessage(KEY_NAME),
     NOTIFICATION_INTERVAL: 10 * 1000,
+    BULK_SIZE: 5,
     DEBUG,
     storageArea,
     debug,

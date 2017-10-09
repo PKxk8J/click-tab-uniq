@@ -18,6 +18,7 @@ var _export
     KEY_FAILURE_MESSAGE,
     NOTIFICATION_ID,
     NOTIFICATION_INTERVAL,
+    BULK_SIZE,
     debug,
     onError,
     asleep
@@ -71,9 +72,8 @@ var _export
 
     progress.target = removeIds.length
     // 1つずつより速いが増やすと固まる
-    const step = 5
-    for (let i = 0; i < removeIds.length; i += step) {
-      const target = removeIds.slice(i, i + step)
+    for (let i = 0; i < removeIds.length; i += BULK_SIZE) {
+      const target = removeIds.slice(i, i + BULK_SIZE)
       await tabs.remove(target)
       progress.done += target.length
     }
