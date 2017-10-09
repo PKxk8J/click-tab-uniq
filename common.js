@@ -47,6 +47,7 @@ var _export
     KEY_NOTIFICATION: 'notification',
     KEY_SAVE: 'save',
     KEY_CLOSING: 'closing',
+    KEY_PROGRESS: 'progress',
     KEY_SUCCESS_MESSAGE: 'successMessage',
     KEY_FAILURE_MESSAGE: 'failureMessage',
     ALL_MENU_ITEMS: [KEY_URL, KEY_TITLE],

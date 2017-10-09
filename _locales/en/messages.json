@@ -28,6 +28,9 @@
     "message": "Save"
   },
   "closing": {
+    "message": "Closing duplicate tabs..."
+  },
+  "progress": {
     "message": "Closing duplicate tabs... $PROGRESS$% completed in $TIME$ seconds.",
     "placeholders": {
       "time": {

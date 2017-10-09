@@ -18,6 +18,9 @@
     "message": "保存"
   },
   "closing": {
+    "message": "重複タブ削除中..."
+  },
+  "progress": {
     "message": "重複タブ削除中... $PROGRESS$%完了: $TIME$秒",
     "placeholders": {
       "time": {
