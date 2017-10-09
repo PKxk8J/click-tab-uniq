@@ -26,6 +26,10 @@ var _export
     }
   }
 
+  async function asleep (msec) {
+    return new Promise(resolve => setTimeout(resolve, msec))
+  }
+
   // 設定値を取得する
   async function getValue (key, defaultValue) {
     const {
@@ -49,11 +53,13 @@ var _export
     DEFAULT_MENU_ITEMS: [KEY_URL, KEY_TITLE],
     DEFAULT_NOTIFICATION: false,
     NOTIFICATION_ID: i18n.getMessage(KEY_NAME),
+    NOTIFICATION_INTERVAL: 10 * 1000,
     DEBUG,
     storageArea,
     debug,
     onError: console.error,
-    getValue
+    getValue,
+    asleep
   })
 }
 

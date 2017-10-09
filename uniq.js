@@ -17,8 +17,10 @@ var _export
     KEY_SUCCESS_MESSAGE,
     KEY_FAILURE_MESSAGE,
     NOTIFICATION_ID,
+    NOTIFICATION_INTERVAL,
     debug,
-    onError
+    onError,
+    asleep
   } = common
 
   // 重複検査キーの取得関数
@@ -28,8 +30,9 @@ var _export
   }
 
   // 重複するタブを削除する
-  async function run (windowId, keyGetter) {
+  async function run (windowId, keyGetter, progress) {
     const tabList = await tabs.query({windowId})
+    progress.all = tabList.length
 
     const keys = new Set()
 
@@ -48,8 +51,8 @@ var _export
     const ignoreActive = !keys.has(activeKey)
     keys.add(activeKey)
 
-    let nClosed = 0
     for (const tab of tabList) {
+      progress.checked++
       if (tab.pinned) {
         continue
       }
@@ -63,45 +66,64 @@ var _export
       }
 
       await tabs.remove(tab.id)
-      nClosed++
       debug('Tab ' + tab.id + ' was closed: ' + key)
+      progress.closed++
     }
+  }
 
-    return {
-      all: tabList.length,
-      closed: nClosed
+  async function startProgressNotification (progress) {
+    while (!progress.end && !progress.error) {
+      notify(progress)
+      await asleep(NOTIFICATION_INTERVAL)
     }
   }
 
   // 通知を表示する
-  async function notify (message) {
+  async function notify (progress) {
+    let message
+    if (progress.error) {
+      message = i18n.getMessage(KEY_FAILURE_MESSAGE, progress.error)
+    } else if (progress.end) {
+      const seconds = (progress.end - progress.start) / 1000
+      message = i18n.getMessage(KEY_SUCCESS_MESSAGE, [seconds, progress.all, progress.closed])
+    } else if (progress.start && progress.all) {
+      const seconds = (new Date() - progress.start) / 1000
+      const percentage = Math.floor(progress.checked * 100 / progress.all)
+      message = i18n.getMessage(KEY_CLOSING, [seconds, percentage])
+    } else {
+      message = i18n.getMessage(KEY_CLOSING, [0, 0])
+    }
     await notifications.create(NOTIFICATION_ID, {
       'type': 'basic',
       'title': NOTIFICATION_ID,
-      message: message
+      message
     })
   }
 
   // 前後処理で挟む
   async function wrappedRun (windowId, keyType, notification) {
+    const progress = {
+      checked: 0,
+      closed: 0
+    }
     try {
       if (notification) {
-        await notify(i18n.getMessage(KEY_CLOSING))
+        startProgressNotification(progress)
+        progress.start = new Date()
       }
 
-      const start = new Date()
-      const {all, closed} = await run(windowId, KEY_GETTERS[keyType])
-      const seconds = (new Date() - start) / 1000
-      const message = i18n.getMessage(KEY_SUCCESS_MESSAGE, [seconds, all, closed])
+      await run(windowId, KEY_GETTERS[keyType], progress)
+      debug('Finished')
 
-      debug(message)
       if (notification) {
-        await notify(message)
+        progress.end = new Date()
+        await notify(progress)
       }
     } catch (e) {
       onError(e)
       if (notification) {
-        await notify(i18n.getMessage(KEY_FAILURE_MESSAGE, e))
+        progress.error = e
+        await notify(progress)
       }
     }
   }
