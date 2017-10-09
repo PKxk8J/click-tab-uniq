@@ -51,8 +51,8 @@ var _export
     const ignoreActive = !keys.has(activeKey)
     keys.add(activeKey)
 
+    const removeIds = []
     for (const tab of tabList) {
-      progress.checked++
       if (tab.pinned) {
         continue
       }
@@ -65,9 +65,17 @@ var _export
         continue
       }
 
-      await tabs.remove(tab.id)
+      removeIds.push(tab.id)
       debug('Tab ' + tab.id + ' was closed: ' + key)
-      progress.closed++
+    }
+
+    progress.target = removeIds.length
+    // 1つずつより速いが増やすと固まる
+    const step = 5
+    for (let i = 0; i < removeIds.length; i += step) {
+      const target = removeIds.slice(i, i + step)
+      await tabs.remove(target)
+      progress.done += target.length
     }
   }
 
@@ -85,10 +93,10 @@ var _export
       message = i18n.getMessage(KEY_FAILURE_MESSAGE, progress.error)
     } else if (progress.end) {
       const seconds = (progress.end - progress.start) / 1000
-      message = i18n.getMessage(KEY_SUCCESS_MESSAGE, [seconds, progress.all, progress.closed])
-    } else if (progress.start && progress.all) {
+      message = i18n.getMessage(KEY_SUCCESS_MESSAGE, [seconds, progress.all, progress.done])
+    } else if (progress.start && progress.target) {
       const seconds = (new Date() - progress.start) / 1000
-      const percentage = Math.floor(progress.checked * 100 / progress.all)
+      const percentage = Math.floor(progress.done * 100 / progress.target)
       message = i18n.getMessage(KEY_CLOSING, [seconds, percentage])
     } else {
       message = i18n.getMessage(KEY_CLOSING, [0, 0])
@@ -103,8 +111,7 @@ var _export
   // 前後処理で挟む
   async function wrappedRun (windowId, keyType, notification) {
     const progress = {
-      checked: 0,
-      closed: 0
+      done: 0
     }
     try {
       if (notification) {
