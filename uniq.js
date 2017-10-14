@@ -24,11 +24,79 @@ var _export
     onError,
     asleep
   } = common
+  const {
+    isActiveTab
+  } = monitor
 
   // 重複検査キーの取得関数
   const KEY_GETTERS = {
     [KEY_URL]: (tab) => tab.url,
     [KEY_TITLE]: (tab) => tab.title
+  }
+
+  // 未読み込みのタブにフォーカスが移って読み込んでしまうのを防ぐために
+  // 移動しないタブか末尾のタブにフォーカスする
+  async function activateBest (windowId, excludedIds) {
+    const moveIdSet = new Set(excludedIds)
+
+    const tabList = await tabs.query({windowId})
+
+    let activeTab
+    let lastTab
+    let notMoveTabs = []
+    for (const tab of tabList) {
+      const move = moveIdSet.has(tab.id)
+
+      if (tab.active) {
+        if (!move) {
+          // 元から移動しないタブにフォーカスしてる
+          return
+        }
+        activeTab = tab
+      }
+      if (!lastTab || tab.index > lastTab.index) {
+        lastTab = tab
+      }
+      if (!move) {
+        notMoveTabs.push(tab)
+      }
+    }
+
+    // フォーカスしているタブの後ろで最も近い動かないタブ
+    let nextTab
+    // フォーカスしているタブの前で最も近い動かないタブ
+    let prevTab
+    for (const tab of notMoveTabs) {
+      if (tab.index < activeTab.index) {
+        if (!prevTab || tab.index > prevTab.index) {
+          prevTab = tab
+        }
+      } else {
+        if (!nextTab || tab.index < nextTab.index) {
+          nextTab = tab
+        }
+      }
+    }
+
+    let bestTab
+    if (nextTab) {
+      bestTab = nextTab
+    } else if (prevTab) {
+      bestTab = prevTab
+    } else {
+      bestTab = lastTab
+    }
+
+    if (bestTab === activeTab) {
+      // 全部が移動対象で activeTab が lastTab だった
+      return
+    } else if (activeTab.index + 1 === bestTab.index) {
+      // activeTab を移動させれば自然と bestTab にフォーカスが移る
+      return
+    }
+
+    await tabs.update(bestTab.id, {active: true})
+    debug('Activated tab ' + bestTab.id)
   }
 
   // 重複するタブを削除する
@@ -37,12 +105,16 @@ var _export
     progress.all = tabList.length
 
     const idToEntry = new Map()
+    const pinnedIds = new Set()
     const keyToSurviveId = new Map()
     const removeIds = []
     for (const tab of tabList) {
       const key = keyGetter(tab)
 
       idToEntry.set(tab.id, {tab, key})
+      if (tab.pinned) {
+        pinnedIds.add(tab.id)
+      }
       if (!keyToSurviveId.has(key)) {
         // 重複するタブはまだ見つかってない
         keyToSurviveId.set(key, tab.id)
@@ -72,6 +144,21 @@ var _export
     // 1つずつより速いが増やすと固まる
     for (let i = 0; i < removeIds.length; i += BULK_SIZE) {
       const target = removeIds.slice(i, i + BULK_SIZE)
+
+      for (let i = 0; i < target.length; i++) {
+        if (isActiveTab(target[i])) {
+          const entry = idToEntry.get(target[i])
+          const rival = idToEntry.get(keyToSurviveId.get(entry.key)).tab
+          if (!rival.pinned) {
+            keyToSurviveId.set(entry.key, target[i])
+            target[i] = rival.id
+            break
+          }
+          await activateBest(entry.tab.windowId, removeIds)
+          break
+        }
+      }
+
       await tabs.remove(target)
       progress.done += target.length
     }
