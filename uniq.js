@@ -160,6 +160,7 @@ var _export
       }
 
       await tabs.remove(target)
+      debug('Tabs' + target + ' were closed')
       progress.done += target.length
     }
   }
