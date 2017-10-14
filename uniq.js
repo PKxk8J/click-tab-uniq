@@ -36,39 +36,36 @@ var _export
     const tabList = await tabs.query({windowId})
     progress.all = tabList.length
 
-    const keys = new Set()
-
-    // ピン留めされているタブとフォーカスのあるタブを先に調べる
-    let activeKey
-    for (const tab of tabList) {
-      if (tab.pinned) {
-        keys.add(keyGetter(tab))
-      }
-      if (tab.active) {
-        activeKey = keyGetter(tab)
-      }
-    }
-
-    // 同じタブがピン留めされていないなら、フォーカスのあるタブは閉じない
-    const ignoreActive = !keys.has(activeKey)
-    keys.add(activeKey)
-
+    const idToEntry = new Map()
+    const keyToSurviveId = new Map()
     const removeIds = []
     for (const tab of tabList) {
-      if (tab.pinned) {
-        continue
-      }
-
       const key = keyGetter(tab)
-      if (!keys.has(key)) {
-        keys.add(key)
-        continue
-      } if (tab.active && ignoreActive) {
+
+      idToEntry.set(tab.id, {tab, key})
+      if (!keyToSurviveId.has(key)) {
+        // 重複するタブはまだ見つかってない
+        keyToSurviveId.set(key, tab.id)
         continue
       }
 
-      removeIds.push(tab.id)
-      debug('Tab ' + tab.id + ' was closed: ' + key)
+      // 重複するタブが見つかってる
+
+      if (!tab.pinned) {
+        removeIds.push(tab.id)
+        continue
+      }
+
+      // ピン留めされてる
+
+      const rival = idToEntry.get(keyToSurviveId.get(key)).tab
+      if (rival.pinned) {
+        continue
+      }
+
+      // 重複するタブはピン留めされてなかった
+      keyToSurviveId.set(key, tab.id)
+      removeIds.push(rival.id)
     }
 
     progress.target = removeIds.length
