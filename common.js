@@ -26,8 +26,8 @@ var _export
     }
   }
 
-  function onError (error) {
-    console.error(error)
+  async function asleep (msec) {
+    return new Promise(resolve => setTimeout(resolve, msec))
   }
 
   // 設定値を取得する
@@ -47,16 +47,21 @@ var _export
     KEY_NOTIFICATION: 'notification',
     KEY_SAVE: 'save',
     KEY_CLOSING: 'closing',
+    KEY_PROGRESS: 'progress',
     KEY_SUCCESS_MESSAGE: 'successMessage',
     KEY_FAILURE_MESSAGE: 'failureMessage',
-    DEFAULT_MENU_ITEM: [KEY_URL, KEY_TITLE],
+    ALL_MENU_ITEMS: [KEY_URL, KEY_TITLE],
+    DEFAULT_MENU_ITEMS: [KEY_URL, KEY_TITLE],
     DEFAULT_NOTIFICATION: false,
     NOTIFICATION_ID: i18n.getMessage(KEY_NAME),
+    NOTIFICATION_INTERVAL: 10 * 1000,
+    BULK_SIZE: 5,
     DEBUG,
     storageArea,
     debug,
-    onError,
-    getValue
+    onError: console.error,
+    getValue,
+    asleep
   })
 }
 

@@ -30,6 +30,17 @@
   "closing": {
     "message": "Closing duplicate tabs..."
   },
+  "progress": {
+    "message": "Closing duplicate tabs... $PROGRESS$% completed in $TIME$ seconds.",
+    "placeholders": {
+      "time": {
+        "content": "$1"
+      },
+      "progress": {
+        "content": "$2"
+      }
+    }
+  },
   "successMessage": {
     "message": "Closing duplicate tabs completed in $TIME$ seconds.\n$CLOSED$ of $ALL$ tabs were closed.",
     "placeholders": {

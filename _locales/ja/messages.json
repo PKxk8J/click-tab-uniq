@@ -20,6 +20,17 @@
   "closing": {
     "message": "重複タブ削除中..."
   },
+  "progress": {
+    "message": "重複タブ削除中... $PROGRESS$%完了: $TIME$秒",
+    "placeholders": {
+      "time": {
+        "content": "$1"
+      },
+      "progress": {
+        "content": "$2"
+      }
+    }
+  },
   "successMessage": {
     "message": "重複タブ削除完了: $TIME$秒\n$ALL$個中$CLOSED$個のタブを削除",
     "placeholders": {
