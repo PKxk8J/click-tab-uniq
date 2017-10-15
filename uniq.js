@@ -144,13 +144,14 @@ var _export
     for (let i = 0; i < removeIds.length; i += BULK_SIZE) {
       const target = removeIds.slice(i, i + BULK_SIZE)
 
-      for (let i = 0; i < target.length; i++) {
-        if (isActiveTab(target[i])) {
-          const entry = idToEntry.get(target[i])
+      for (let j = 0; j < target.length; j++) {
+        const id = target[j]
+        if (isActiveTab(id)) {
+          const entry = idToEntry.get(id)
           const rival = idToEntry.get(keyToSurviveId.get(entry.key)).tab
           if (!rival.pinned || (closePinned && entry.tab.pinned)) {
-            keyToSurviveId.set(entry.key, target[i])
-            target[i] = rival.id
+            keyToSurviveId.set(entry.key, id)
+            target[j] = rival.id
             break
           }
           await activateBest(entry.tab.windowId, removeIds)
