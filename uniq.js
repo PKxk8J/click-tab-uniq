@@ -100,21 +100,17 @@ var _export
   }
 
   // 重複するタブを削除する
-  async function run (windowId, keyGetter, progress) {
+  async function run (windowId, keyGetter, closePinned, progress) {
     const tabList = await tabs.query({windowId})
     progress.all = tabList.length
 
     const idToEntry = new Map()
-    const pinnedIds = new Set()
     const keyToSurviveId = new Map()
     const removeIds = []
     for (const tab of tabList) {
       const key = keyGetter(tab)
 
       idToEntry.set(tab.id, {tab, key})
-      if (tab.pinned) {
-        pinnedIds.add(tab.id)
-      }
       if (!keyToSurviveId.has(key)) {
         // 重複するタブはまだ見つかってない
         keyToSurviveId.set(key, tab.id)
@@ -132,6 +128,9 @@ var _export
 
       const rival = idToEntry.get(keyToSurviveId.get(key)).tab
       if (rival.pinned) {
+        if (closePinned) {
+          removeIds.push(tab.id)
+        }
         continue
       }
 
@@ -142,16 +141,18 @@ var _export
 
     progress.target = removeIds.length
     // 1つずつより速いが増やすと固まる
-    for (let i = 0; i < removeIds.length; i += BULK_SIZE) {
-      const target = removeIds.slice(i, i + BULK_SIZE)
+    // 後ろから消した方が速い
+    for (let i = removeIds.length; i > 0; i -= BULK_SIZE) {
+      const target = removeIds.slice(Math.max(0, i - BULK_SIZE), i)
 
-      for (let i = 0; i < target.length; i++) {
-        if (isActiveTab(target[i])) {
-          const entry = idToEntry.get(target[i])
+      for (let j = 0; j < target.length; j++) {
+        const id = target[j]
+        if (isActiveTab(id)) {
+          const entry = idToEntry.get(id)
           const rival = idToEntry.get(keyToSurviveId.get(entry.key)).tab
-          if (!rival.pinned) {
-            keyToSurviveId.set(entry.key, target[i])
-            target[i] = rival.id
+          if (!rival.pinned || (closePinned && entry.tab.pinned)) {
+            keyToSurviveId.set(entry.key, id)
+            target[j] = rival.id
             break
           }
           await activateBest(entry.tab.windowId, removeIds)
@@ -198,7 +199,7 @@ var _export
   }
 
   // 前後処理で挟む
-  async function wrappedRun (windowId, keyType, notification) {
+  async function wrappedRun (windowId, keyType, closePinned, notification) {
     const progress = {
       done: 0
     }
@@ -209,7 +210,7 @@ var _export
         progress.start = new Date()
       }
 
-      await run(windowId, KEY_GETTERS[keyType], progress)
+      await run(windowId, KEY_GETTERS[keyType], closePinned, progress)
       debug('Finished')
 
       if (notification) {
