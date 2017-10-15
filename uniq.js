@@ -105,16 +105,12 @@ var _export
     progress.all = tabList.length
 
     const idToEntry = new Map()
-    const pinnedIds = new Set()
     const keyToSurviveId = new Map()
     const removeIds = []
     for (const tab of tabList) {
       const key = keyGetter(tab)
 
       idToEntry.set(tab.id, {tab, key})
-      if (tab.pinned) {
-        pinnedIds.add(tab.id)
-      }
       if (!keyToSurviveId.has(key)) {
         // 重複するタブはまだ見つかってない
         keyToSurviveId.set(key, tab.id)
