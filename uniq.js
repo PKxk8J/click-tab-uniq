@@ -141,8 +141,9 @@ var _export
 
     progress.target = removeIds.length
     // 1つずつより速いが増やすと固まる
-    for (let i = 0; i < removeIds.length; i += BULK_SIZE) {
-      const target = removeIds.slice(i, i + BULK_SIZE)
+    // 後ろから消した方が速い
+    for (let i = removeIds.length; i > 0; i -= BULK_SIZE) {
+      const target = removeIds.slice(Math.max(0, i - BULK_SIZE), i)
 
       for (let j = 0; j < target.length; j++) {
         const id = target[j]
