@@ -23,9 +23,10 @@
           const {
             keyType,
             windowId,
+            closePinned,
             notification
           } = message
-          await run(windowId, keyType, notification)
+          await run(windowId, keyType, closePinned, notification)
         }
       }
     })().catch(onError)

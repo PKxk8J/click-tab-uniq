@@ -100,7 +100,7 @@ var _export
   }
 
   // 重複するタブを削除する
-  async function run (windowId, keyGetter, progress) {
+  async function run (windowId, keyGetter, closePinned, progress) {
     const tabList = await tabs.query({windowId})
     progress.all = tabList.length
 
@@ -132,6 +132,9 @@ var _export
 
       const rival = idToEntry.get(keyToSurviveId.get(key)).tab
       if (rival.pinned) {
+        if (closePinned) {
+          removeIds.push(tab.id)
+        }
         continue
       }
 
@@ -149,7 +152,7 @@ var _export
         if (isActiveTab(target[i])) {
           const entry = idToEntry.get(target[i])
           const rival = idToEntry.get(keyToSurviveId.get(entry.key)).tab
-          if (!rival.pinned) {
+          if (!rival.pinned || (closePinned && entry.tab.pinned)) {
             keyToSurviveId.set(entry.key, target[i])
             target[i] = rival.id
             break
@@ -198,7 +201,7 @@ var _export
   }
 
   // 前後処理で挟む
-  async function wrappedRun (windowId, keyType, notification) {
+  async function wrappedRun (windowId, keyType, closePinned, notification) {
     const progress = {
       done: 0
     }
@@ -209,7 +212,7 @@ var _export
         progress.start = new Date()
       }
 
-      await run(windowId, KEY_GETTERS[keyType], progress)
+      await run(windowId, KEY_GETTERS[keyType], closePinned, progress)
       debug('Finished')
 
       if (notification) {
