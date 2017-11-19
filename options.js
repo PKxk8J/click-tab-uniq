@@ -4,13 +4,13 @@ const {
   i18n
 } = browser
 const {
-  storageArea,
   KEY_MENU_ITEMS,
   KEY_NOTIFICATION,
   KEY_SAVE,
   ALL_MENU_ITEMS,
   DEFAULT_MENU_ITEMS,
   DEFAULT_NOTIFICATION,
+  storageArea,
   debug,
   onError
 } = common
