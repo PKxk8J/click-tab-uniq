@@ -43,7 +43,7 @@ var _export
     KEY_TITLE,
     KEY_UNIQ: 'uniq',
     KEY_UNIQ_BY: 'uniqBy',
-    KEY_MENU_ITEM: 'menuItem',
+    KEY_MENU_ITEMS: 'menuItems',
     KEY_NOTIFICATION: 'notification',
     KEY_SAVE: 'save',
     KEY_CLOSING: 'closing',
