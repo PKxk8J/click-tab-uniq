@@ -57,5 +57,14 @@
   },
   "failureMessage": {
     "message": "Closing duplicate tabs failed.\n$1"
+  },
+  "contexts": {
+    "message": "Click Menu"
+  },
+  "tab": {
+    "message": "on Tabs"
+  },
+  "all": {
+    "message": "on Pages"
   }
 }
