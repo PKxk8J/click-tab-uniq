@@ -11,7 +11,7 @@
   "notification": {
     "message": "通知"
   },
-  "menuItem": {
+  "menuItems": {
     "message": "メニュー項目"
   },
   "save": {
@@ -47,5 +47,14 @@
   },
   "failureMessage": {
     "message": "重複タブ削除失敗\n$1"
+  },
+  "contexts": {
+    "message": "クリックメニュー"
+  },
+  "tab": {
+    "message": "タブ"
+  },
+  "all": {
+    "message": "ページ"
   }
 }

@@ -13,6 +13,9 @@ var _export
   const KEY_DEBUG = 'debug'
   const KEY_NAME = 'name'
 
+  const KEY_TAB = 'tab'
+  const KEY_ALL = 'all'
+
   const KEY_URL = 'url'
   const KEY_TITLE = 'title'
 
@@ -39,17 +42,22 @@ var _export
   }
 
   _export = Object.freeze({
+    KEY_TAB,
+    KEY_ALL,
     KEY_URL,
     KEY_TITLE,
     KEY_UNIQ: 'uniq',
     KEY_UNIQ_BY: 'uniqBy',
-    KEY_MENU_ITEM: 'menuItem',
+    KEY_CONTEXTS: 'contexts',
+    KEY_MENU_ITEMS: 'menuItems',
     KEY_NOTIFICATION: 'notification',
     KEY_SAVE: 'save',
     KEY_CLOSING: 'closing',
     KEY_PROGRESS: 'progress',
     KEY_SUCCESS_MESSAGE: 'successMessage',
     KEY_FAILURE_MESSAGE: 'failureMessage',
+    ALL_CONTEXTS: [KEY_TAB, KEY_ALL],
+    DEFAULT_CONTEXTS: [KEY_TAB],
     ALL_MENU_ITEMS: [KEY_URL, KEY_TITLE],
     DEFAULT_MENU_ITEMS: [KEY_URL, KEY_TITLE],
     DEFAULT_NOTIFICATION: false,
