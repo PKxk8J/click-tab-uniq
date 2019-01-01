@@ -15,6 +15,9 @@
   "url": {
     "message": "URL"
   },
+  "urlWithoutHash": {
+    "message": "URL without Hash"
+  },
   "title": {
     "message": "Title"
   },

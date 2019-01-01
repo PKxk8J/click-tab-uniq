@@ -32,7 +32,7 @@ browser.runtime.sendMessage('{e3e32590-2c56-405d-9f0f-9dc571a87d67}', {
 |Property name|Type|Description|
 |:--|:--|:--|
 |type|string|`uniq`|
-|keyType|string|`url` or `title`|
+|keyType|string|`url` or `urlWithoutHash` or `title`|
 |windowId|number|The ID of a target window|
 |closePinned|boolean|Whether to close duplicate pinned tabs|
 |notification|boolean|Whether to show notification|

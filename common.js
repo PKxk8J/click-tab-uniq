@@ -17,6 +17,7 @@ var _export
   const KEY_ALL = 'all'
 
   const KEY_URL = 'url'
+  const KEY_URL_WITHOUT_HASH = 'urlWithoutHash'
   const KEY_TITLE = 'title'
 
   const DEBUG = (i18n.getMessage(KEY_DEBUG) === 'debug')
@@ -45,6 +46,7 @@ var _export
     KEY_TAB,
     KEY_ALL,
     KEY_URL,
+    KEY_URL_WITHOUT_HASH,
     KEY_TITLE,
     KEY_UNIQ: 'uniq',
     KEY_UNIQ_BY: 'uniqBy',
@@ -58,7 +60,7 @@ var _export
     KEY_FAILURE_MESSAGE: 'failureMessage',
     ALL_CONTEXTS: [KEY_TAB, KEY_ALL],
     DEFAULT_CONTEXTS: [KEY_TAB],
-    ALL_MENU_ITEMS: [KEY_URL, KEY_TITLE],
+    ALL_MENU_ITEMS: [KEY_URL, KEY_URL_WITHOUT_HASH, KEY_TITLE],
     DEFAULT_MENU_ITEMS: [KEY_URL, KEY_TITLE],
     DEFAULT_NOTIFICATION: false,
     NOTIFICATION_ID: i18n.getMessage(KEY_NAME),
