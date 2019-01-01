@@ -8,6 +8,9 @@
   "title": {
     "message": "タイトル"
   },
+  "urlWithoutHash": {
+    "message": "ハッシュを除くURL"
+  },
   "notification": {
     "message": "通知"
   },

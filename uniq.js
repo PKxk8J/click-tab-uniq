@@ -12,6 +12,7 @@ var _export
   } = browser
   const {
     KEY_URL,
+    KEY_URL_WITHOUT_HASH,
     KEY_TITLE,
     KEY_CLOSING,
     KEY_PROGRESS,
@@ -31,6 +32,7 @@ var _export
   // 重複検査キーの取得関数
   const KEY_GETTERS = {
     [KEY_URL]: (tab) => tab.url,
+    [KEY_URL_WITHOUT_HASH]: (tab) => tab.url.split("#")[0],
     [KEY_TITLE]: (tab) => tab.title
   }
 
