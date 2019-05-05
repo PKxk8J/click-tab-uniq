@@ -1,12 +1,12 @@
 {
   "manifest_version": 2,
   "name": "__MSG_name__",
-  "version": "2.2.1",
+  "version": "2.2.2",
   "description": "Close duplicate tabs from the right click menu.",
   "applications": {
     "gecko": {
       "id": "{e3e32590-2c56-405d-9f0f-9dc571a87d67}",
-      "strict_min_version": "53.0"
+      "strict_min_version": "57.0"
     }
   },
   "permissions": [
