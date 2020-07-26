@@ -8,7 +8,7 @@
     i18n,
     runtime,
     storage,
-    tabs
+    tabs,
   } = browser
   const {
     KEY_UNIQ,
@@ -22,10 +22,10 @@
     DEFAULT_NOTIFICATION,
     debug,
     onError,
-    getValue
+    getValue,
   } = common
   const {
-    run
+    run,
   } = uniq
 
   // 右クリックメニューに項目を追加する
@@ -38,7 +38,7 @@
       id,
       title,
       contexts,
-      parentId
+      parentId,
     }, () => {
       if (runtime.lastError) {
         onError(runtime.lastError)
@@ -61,7 +61,8 @@
       case 1: {
         // 1 つだけのときはフラットメニュー
         const key = menuItems[0]
-        await addMenuItem(key, i18n.getMessage(KEY_UNIQ_BY, i18n.getMessage(key)))
+        await addMenuItem(key,
+          i18n.getMessage(KEY_UNIQ_BY, i18n.getMessage(key)))
         break
       }
       default: {
@@ -86,8 +87,10 @@
     // 右クリックメニューから実行
     contextMenus.onClicked.addListener((info, tab) => (async function () {
       if (ALL_MENU_ITEMS.includes(info.menuItemId)) {
-        tab = tab || (await tabs.query({active: true, currentWindow: true}))[0]
-        const notification = await getValue(KEY_NOTIFICATION, DEFAULT_NOTIFICATION)
+        tab = tab ||
+          (await tabs.query({ active: true, currentWindow: true }))[0]
+        const notification = await getValue(KEY_NOTIFICATION,
+          DEFAULT_NOTIFICATION)
         await run(tab.windowId, info.menuItemId, tab.pinned, notification)
       }
     })().catch(onError))

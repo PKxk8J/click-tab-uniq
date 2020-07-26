@@ -4,15 +4,15 @@
 
 {
   const {
-    runtime
+    runtime,
   } = browser
   const {
     KEY_UNIQ,
     debug,
-    onError
+    onError,
   } = common
   const {
-    run
+    run,
   } = uniq
 
   function handler (message, sender, sendResponse) {
@@ -24,7 +24,7 @@
             keyType,
             windowId,
             closePinned,
-            notification
+            notification,
           } = message
           await run(windowId, keyType, closePinned, notification)
         }

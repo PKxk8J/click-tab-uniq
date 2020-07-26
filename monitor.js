@@ -7,11 +7,11 @@ var _export
 {
   const {
     tabs,
-    windows
+    windows,
   } = browser
   const {
     debug,
-    onError
+    onError,
   } = common
 
   const windowToActiveTab = new Map()
@@ -24,7 +24,9 @@ var _export
   function update (windowId, tabId) {
     const old = windowToActiveTab.get(windowId)
     if (old) {
-      debug('Tab' + tabId + ' became active instead of tab' + old + ' in window' + windowId)
+      debug(
+        'Tab' + tabId + ' became active instead of tab' + old + ' in window' +
+        windowId)
       activeTabToWindow.delete(old)
     } else {
       debug('Tab' + tabId + ' became active in window' + windowId)
@@ -46,7 +48,7 @@ var _export
     //     return
     //   }
     // }
-    const [tab] = await tabs.query({windowId: window.id, active: true})
+    const [tab] = await tabs.query({ windowId: window.id, active: true })
     update(window.id, tab.id)
   })().catch(onError))
 
@@ -63,7 +65,7 @@ var _export
   })
 
   _export = Object.freeze({
-    isActiveTab
+    isActiveTab,
   })
 }
 
