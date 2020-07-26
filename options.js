@@ -1,7 +1,7 @@
 'use strict'
 
 const {
-  i18n
+  i18n,
 } = browser
 const {
   KEY_CONTEXTS,
@@ -15,10 +15,11 @@ const {
   DEFAULT_NOTIFICATION,
   storageArea,
   debug,
-  onError
+  onError,
 } = common
 
-const LABEL_KEYS = ALL_CONTEXTS.concat(ALL_MENU_ITEMS, [KEY_CONTEXTS, KEY_MENU_ITEMS, KEY_NOTIFICATION, KEY_SAVE])
+const LABEL_KEYS = ALL_CONTEXTS.concat(ALL_MENU_ITEMS,
+  [KEY_CONTEXTS, KEY_MENU_ITEMS, KEY_NOTIFICATION, KEY_SAVE])
 
 /*
  * {
@@ -36,7 +37,7 @@ async function restore () {
   const {
     [KEY_CONTEXTS]: contexts = DEFAULT_CONTEXTS,
     [KEY_MENU_ITEMS]: menuItems = DEFAULT_MENU_ITEMS,
-    [KEY_NOTIFICATION]: notification = DEFAULT_NOTIFICATION
+    [KEY_NOTIFICATION]: notification = DEFAULT_NOTIFICATION,
   } = data
 
   const contextSet = new Set(contexts)
@@ -73,7 +74,7 @@ async function save () {
   const data = {
     [KEY_CONTEXTS]: contexts,
     [KEY_MENU_ITEMS]: menuItems,
-    [KEY_NOTIFICATION]: notification
+    [KEY_NOTIFICATION]: notification,
   }
   // 古い形式のデータを消す
   await storageArea.clear()
@@ -105,9 +106,11 @@ async function save () {
   ALL_MENU_ITEMS.forEach((key) => addCheckboxEntry(key, itemUl))
 
   LABEL_KEYS.forEach((key) => {
-    document.getElementById('label_' + key).textContent = ' ' + i18n.getMessage(key) + ' '
+    document.getElementById('label_' + key).textContent = ' ' +
+      i18n.getMessage(key) + ' '
   })
 
   document.addEventListener('DOMContentLoaded', () => restore().catch(onError))
-  document.getElementById(KEY_SAVE).addEventListener('click', (e) => save().catch(onError))
+  document.getElementById(KEY_SAVE).
+    addEventListener('click', (e) => save().catch(onError))
 })().catch(onError)

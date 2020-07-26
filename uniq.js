@@ -8,7 +8,7 @@ var _export
   const {
     i18n,
     notifications,
-    tabs
+    tabs,
   } = browser
   const {
     KEY_URL,
@@ -23,17 +23,17 @@ var _export
     BULK_SIZE,
     debug,
     onError,
-    asleep
+    asleep,
   } = common
   const {
-    isActiveTab
+    isActiveTab,
   } = monitor
 
   // 重複検査キーの取得関数
   const KEY_GETTERS = {
     [KEY_URL]: (tab) => tab.url,
-    [KEY_URL_WITHOUT_HASH]: (tab) => tab.url.split("#")[0],
-    [KEY_TITLE]: (tab) => tab.title
+    [KEY_URL_WITHOUT_HASH]: (tab) => tab.url.split('#')[0],
+    [KEY_TITLE]: (tab) => tab.title,
   }
 
   // 未読み込みのタブにフォーカスが移って読み込んでしまうのを防ぐために
@@ -41,7 +41,7 @@ var _export
   async function activateBest (windowId, excludedIds) {
     const moveIdSet = new Set(excludedIds)
 
-    const tabList = await tabs.query({windowId})
+    const tabList = await tabs.query({ windowId })
 
     let activeTab
     let lastTab
@@ -97,13 +97,13 @@ var _export
       return
     }
 
-    await tabs.update(bestTab.id, {active: true})
+    await tabs.update(bestTab.id, { active: true })
     debug('Activated tab ' + bestTab.id)
   }
 
   // 重複するタブを削除する
   async function run (windowId, keyGetter, closePinned, progress) {
-    const tabList = await tabs.query({windowId})
+    const tabList = await tabs.query({ windowId })
     progress.all = tabList.length
 
     const idToEntry = new Map()
@@ -112,7 +112,7 @@ var _export
     for (const tab of tabList) {
       const key = keyGetter(tab)
 
-      idToEntry.set(tab.id, {tab, key})
+      idToEntry.set(tab.id, { tab, key })
       if (!keyToSurviveId.has(key)) {
         // 重複するタブはまだ見つかってない
         keyToSurviveId.set(key, tab.id)
@@ -185,7 +185,8 @@ var _export
       message = i18n.getMessage(KEY_FAILURE_MESSAGE, progress.error)
     } else if (progress.end) {
       const seconds = (progress.end - progress.start) / 1000
-      message = i18n.getMessage(KEY_SUCCESS_MESSAGE, [seconds, progress.all, progress.done])
+      message = i18n.getMessage(KEY_SUCCESS_MESSAGE,
+        [seconds, progress.all, progress.done])
     } else if (progress.start && progress.target) {
       const seconds = (new Date() - progress.start) / 1000
       const percentage = Math.floor(progress.done * 100 / progress.target)
@@ -196,14 +197,14 @@ var _export
     await notifications.create(NOTIFICATION_ID, {
       'type': 'basic',
       'title': NOTIFICATION_ID,
-      message
+      message,
     })
   }
 
   // 前後処理で挟む
   async function wrappedRun (windowId, keyType, closePinned, notification) {
     const progress = {
-      done: 0
+      done: 0,
     }
     try {
       if (notification) {
@@ -229,7 +230,7 @@ var _export
   }
 
   _export = Object.freeze({
-    run: wrappedRun
+    run: wrappedRun,
   })
 }
 

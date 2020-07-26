@@ -7,7 +7,7 @@ var _export
 {
   const {
     i18n,
-    storage
+    storage,
   } = browser
 
   const KEY_DEBUG = 'debug'
@@ -37,7 +37,7 @@ var _export
   // 設定値を取得する
   async function getValue (key, defaultValue) {
     const {
-      [key]: value = defaultValue
+      [key]: value = defaultValue,
     } = await storageArea.get(key)
     return value
   }
@@ -71,7 +71,7 @@ var _export
     debug,
     onError: console.error,
     getValue,
-    asleep
+    asleep,
   })
 }
 
