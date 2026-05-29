@@ -24,6 +24,18 @@
   "title": {
     "message": "Title"
   },
+  "respectBoundaries": {
+    "message": "Preserve groups, containers, and split views"
+  },
+  "ignoreBoundaries": {
+    "message": "Ignore groups, containers, and split views"
+  },
+  "respectBoundariesMenu": {
+    "message": "Respect boundaries"
+  },
+  "ignoreBoundariesMenu": {
+    "message": "Ignore boundaries"
+  },
   "notification": {
     "message": "Notification"
   },

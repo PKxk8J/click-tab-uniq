@@ -11,11 +11,26 @@
   "uniqBy": {
     "message": "$1の重複タブ削除"
   },
+  "url": {
+    "message": "URL"
+  },
   "title": {
     "message": "タイトル"
   },
   "urlWithoutHash": {
     "message": "ハッシュを除くURL"
+  },
+  "respectBoundaries": {
+    "message": "グループ・コンテナ・分割ビューを守る"
+  },
+  "ignoreBoundaries": {
+    "message": "グループ・コンテナ・分割ビューを無視する"
+  },
+  "respectBoundariesMenu": {
+    "message": "グループ等を守る"
+  },
+  "ignoreBoundariesMenu": {
+    "message": "グループ等を無視する"
   },
   "notification": {
     "message": "通知"

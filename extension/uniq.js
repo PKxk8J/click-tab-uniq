@@ -1,8 +1,11 @@
 import {
+  ALL_MENU_MODES,
   BULK_SIZE,
+  KEY_IGNORE_BOUNDARIES,
   KEY_CLOSING,
   KEY_FAILURE_MESSAGE,
   KEY_PROGRESS,
+  KEY_RESPECT_BOUNDARIES,
   KEY_SUCCESS_MESSAGE,
   KEY_TITLE,
   KEY_URL,
@@ -26,6 +29,31 @@ const KEY_GETTERS = {
   [KEY_URL]: (tab) => tab.url,
   [KEY_URL_WITHOUT_HASH]: (tab) => tab.url.split('#')[0],
   [KEY_TITLE]: (tab) => tab.title,
+}
+
+function isSplitViewTab (tab) {
+  return tab.splitViewId !== undefined &&
+    tab.splitViewId !== (tabs.SPLIT_VIEW_ID_NONE ?? -1)
+}
+
+function canRemoveTab (tab, closePinned, respectBoundaries) {
+  if (respectBoundaries && isSplitViewTab(tab)) {
+    return false
+  }
+  return closePinned || !tab.pinned
+}
+
+function getTabKey (tab, keyGetter, respectBoundaries) {
+  const key = keyGetter(tab)
+  if (!respectBoundaries) {
+    return JSON.stringify([key])
+  }
+
+  return JSON.stringify([
+    key,
+    tab.cookieStoreId ?? '',
+    tab.groupId ?? (tabs.TAB_GROUP_ID_NONE ?? -1),
+  ])
 }
 
 async function activateBest (windowId, excludedIds) {
@@ -82,7 +110,8 @@ async function getActiveTabId (windowId) {
   return activeTab && activeTab.id
 }
 
-async function closeDuplicateTabs (windowId, keyGetter, closePinned, progress) {
+async function closeDuplicateTabs (windowId, keyGetter, closePinned,
+  respectBoundaries, progress) {
   const tabList = await tabs.query({ windowId })
   progress.all = tabList.length
 
@@ -90,7 +119,7 @@ async function closeDuplicateTabs (windowId, keyGetter, closePinned, progress) {
   const keyToSurviveId = new Map()
   const removeIds = []
   for (const tab of tabList) {
-    const key = keyGetter(tab)
+    const key = getTabKey(tab, keyGetter, respectBoundaries)
 
     idToEntry.set(tab.id, { tab, key })
     if (!keyToSurviveId.has(key)) {
@@ -98,24 +127,30 @@ async function closeDuplicateTabs (windowId, keyGetter, closePinned, progress) {
       continue
     }
 
-    if (!tab.pinned) {
-      removeIds.push(tab.id)
-      continue
-    }
-
     const rival = idToEntry.get(keyToSurviveId.get(key)).tab
-    if (rival.pinned) {
-      if (closePinned) {
-        removeIds.push(tab.id)
+    const canRemoveTabCurrent = canRemoveTab(tab, closePinned,
+      respectBoundaries)
+    const canRemoveTabRival = canRemoveTab(rival, closePinned,
+      respectBoundaries)
+
+    if (!canRemoveTabCurrent) {
+      if (canRemoveTabRival) {
+        keyToSurviveId.set(key, tab.id)
+        removeIds.push(rival.id)
       }
       continue
     }
 
-    keyToSurviveId.set(key, tab.id)
-    removeIds.push(rival.id)
+    if (!canRemoveTabRival) {
+      removeIds.push(tab.id)
+      continue
+    }
+
+    removeIds.push(tab.id)
   }
 
   progress.target = removeIds.length
+  const removeIdSet = new Set(removeIds)
   for (let i = removeIds.length; i > 0; i -= BULK_SIZE) {
     const target = removeIds.slice(Math.max(0, i - BULK_SIZE), i)
     const activeTabId = await getActiveTabId(windowId)
@@ -132,13 +167,15 @@ async function closeDuplicateTabs (windowId, keyGetter, closePinned, progress) {
         break
       }
 
-      if (!rival.pinned || (closePinned && entry.tab.pinned)) {
+      if (canRemoveTab(rival, closePinned, respectBoundaries)) {
         keyToSurviveId.set(entry.key, id)
         target[j] = rival.id
+        removeIdSet.delete(id)
+        removeIdSet.add(rival.id)
         break
       }
 
-      await activateBest(entry.tab.windowId, removeIds)
+      await activateBest(entry.tab.windowId, removeIdSet)
       break
     }
 
@@ -188,7 +225,8 @@ async function notify (progress) {
   await notifications.create(NOTIFICATION_ID, options)
 }
 
-export async function run (windowId, keyType, closePinned, notification) {
+export async function run (windowId, keyType, closePinned, notification,
+  mode = KEY_RESPECT_BOUNDARIES) {
   const progress = {
     done: 0,
   }
@@ -206,8 +244,13 @@ export async function run (windowId, keyType, closePinned, notification) {
     if (!keyGetter) {
       throw new Error('Unsupported keyType: ' + keyType)
     }
+    if (!ALL_MENU_MODES.includes(mode)) {
+      throw new Error('Unsupported mode: ' + mode)
+    }
 
-    await closeDuplicateTabs(windowId, keyGetter, closePinned, progress)
+    const respectBoundaries = mode !== KEY_IGNORE_BOUNDARIES
+    await closeDuplicateTabs(windowId, keyGetter, closePinned,
+      respectBoundaries, progress)
     debug('Finished')
 
     if (notifyEnabled) {

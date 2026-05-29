@@ -41,6 +41,8 @@ globalThis.browser = {
     sync: {},
   },
   tabs: {
+    SPLIT_VIEW_ID_NONE: -1,
+    TAB_GROUP_ID_NONE: -1,
     query: async (query) => {
       let result = state.tabs
       if (query.windowId !== undefined) {
@@ -77,6 +79,16 @@ globalThis.browser = {
 const {
   run,
 } = await import('../extension/uniq.js')
+const {
+  normalizeMenuItems,
+} = await import('../extension/common.js')
+
+test('normalizes legacy menu item arrays to preserve-boundary modes', () => {
+  assert.deepEqual(normalizeMenuItems(['url', 'title']), {
+    url: ['respectBoundaries'],
+    title: ['respectBoundaries'],
+  })
+})
 
 test('keeps the active duplicate tab when a non-active rival can be closed', async () => {
   resetTabs([
@@ -124,4 +136,62 @@ test('treats URL hash variants as duplicates for urlWithoutHash', async () => {
 
   assert.deepEqual(state.removed, [1])
   assert.equal(state.tabs.find((tab) => tab.id === 2).active, true)
+})
+
+test('keeps duplicate tabs in different tab groups by default', async () => {
+  resetTabs([
+    { id: 1, windowId: 1, index: 0, active: true, pinned: false, groupId: 1, url: 'https://example.com/', title: 'Example' },
+    { id: 2, windowId: 1, index: 1, active: false, pinned: false, groupId: 2, url: 'https://example.com/', title: 'Example' },
+  ])
+
+  await run(1, 'url', false, false)
+
+  assert.deepEqual(state.removed, [])
+})
+
+test('closes duplicate tabs across tab groups when boundaries are ignored', async () => {
+  resetTabs([
+    { id: 1, windowId: 1, index: 0, active: true, pinned: false, groupId: 1, url: 'https://example.com/', title: 'Example' },
+    { id: 2, windowId: 1, index: 1, active: false, pinned: false, groupId: 2, url: 'https://example.com/', title: 'Example' },
+  ])
+
+  await run(1, 'url', false, false, 'ignoreBoundaries')
+
+  assert.deepEqual(state.removed, [2])
+})
+
+test('keeps duplicate tabs in different containers by default', async () => {
+  resetTabs([
+    { id: 1, windowId: 1, index: 0, active: true, pinned: false, cookieStoreId: 'firefox-default', url: 'https://example.com/', title: 'Example' },
+    { id: 2, windowId: 1, index: 1, active: false, pinned: false, cookieStoreId: 'firefox-container-1', url: 'https://example.com/', title: 'Example' },
+  ])
+
+  await run(1, 'url', false, false)
+
+  assert.deepEqual(state.removed, [])
+})
+
+test('preserves split view tabs by default', async () => {
+  resetTabs([
+    { id: 1, windowId: 1, index: 0, active: false, pinned: false, splitViewId: -1, url: 'https://example.com/', title: 'Example' },
+    { id: 2, windowId: 1, index: 1, active: false, pinned: false, splitViewId: 7, url: 'https://example.com/', title: 'Example' },
+    { id: 3, windowId: 1, index: 2, active: true, pinned: false, splitViewId: -1, url: 'https://other.example/', title: 'Other' },
+  ])
+
+  await run(1, 'url', false, false)
+
+  assert.deepEqual(state.removed, [1])
+  assert.ok(state.tabs.find((tab) => tab.id === 2))
+})
+
+test('can close split view duplicate tabs when boundaries are ignored', async () => {
+  resetTabs([
+    { id: 1, windowId: 1, index: 0, active: false, pinned: false, splitViewId: -1, url: 'https://example.com/', title: 'Example' },
+    { id: 2, windowId: 1, index: 1, active: false, pinned: false, splitViewId: 7, url: 'https://example.com/', title: 'Example' },
+    { id: 3, windowId: 1, index: 2, active: true, pinned: false, splitViewId: -1, url: 'https://other.example/', title: 'Other' },
+  ])
+
+  await run(1, 'url', false, false, 'ignoreBoundaries')
+
+  assert.deepEqual(state.removed, [2])
 })

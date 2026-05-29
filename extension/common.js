@@ -12,6 +12,10 @@ export const KEY_ALL = 'all'
 export const KEY_URL = 'url'
 export const KEY_URL_WITHOUT_HASH = 'urlWithoutHash'
 export const KEY_TITLE = 'title'
+export const KEY_RESPECT_BOUNDARIES = 'respectBoundaries'
+export const KEY_IGNORE_BOUNDARIES = 'ignoreBoundaries'
+export const KEY_RESPECT_BOUNDARIES_MENU = 'respectBoundariesMenu'
+export const KEY_IGNORE_BOUNDARIES_MENU = 'ignoreBoundariesMenu'
 
 export const KEY_UNIQ = 'uniq'
 export const KEY_UNIQ_BY = 'uniqBy'
@@ -27,7 +31,11 @@ export const KEY_FAILURE_MESSAGE = 'failureMessage'
 export const ALL_CONTEXTS = [KEY_TAB, KEY_ALL]
 export const DEFAULT_CONTEXTS = [KEY_TAB]
 export const ALL_MENU_ITEMS = [KEY_URL, KEY_URL_WITHOUT_HASH, KEY_TITLE]
-export const DEFAULT_MENU_ITEMS = [KEY_URL, KEY_TITLE]
+export const ALL_MENU_MODES = [KEY_RESPECT_BOUNDARIES, KEY_IGNORE_BOUNDARIES]
+export const DEFAULT_MENU_ITEMS = {
+  [KEY_URL]: [KEY_RESPECT_BOUNDARIES],
+  [KEY_TITLE]: [KEY_RESPECT_BOUNDARIES],
+}
 export const DEFAULT_NOTIFICATION = false
 
 export const NOTIFICATION_PERMISSION = {
@@ -59,4 +67,50 @@ export async function getValue (key, defaultValue) {
     [key]: value = defaultValue,
   } = await storageArea.get(key)
   return value
+}
+
+export function cloneMenuItems (menuItems) {
+  const normalized = {}
+  for (const key of ALL_MENU_ITEMS) {
+    const modes = menuItems[key]
+    if (Array.isArray(modes) && modes.length > 0) {
+      normalized[key] = [...modes]
+    }
+  }
+  return normalized
+}
+
+export function normalizeMenuItems (menuItems) {
+  if (menuItems === undefined) {
+    return cloneMenuItems(DEFAULT_MENU_ITEMS)
+  }
+
+  if (Array.isArray(menuItems)) {
+    const normalized = {}
+    for (const key of ALL_MENU_ITEMS) {
+      if (menuItems.includes(key)) {
+        normalized[key] = [KEY_RESPECT_BOUNDARIES]
+      }
+    }
+    return normalized
+  }
+
+  if (!menuItems || typeof menuItems !== 'object') {
+    return {}
+  }
+
+  const normalized = {}
+  for (const key of ALL_MENU_ITEMS) {
+    const modes = menuItems[key]
+    if (!Array.isArray(modes)) {
+      continue
+    }
+
+    const normalizedModes = ALL_MENU_MODES.
+      filter((mode) => modes.includes(mode))
+    if (normalizedModes.length > 0) {
+      normalized[key] = normalizedModes
+    }
+  }
+  return normalized
 }
