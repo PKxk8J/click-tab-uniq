@@ -13,7 +13,6 @@ import {
   NOTIFICATION_PERMISSION,
   NOTIFICATION_ID,
   NOTIFICATION_INTERVAL,
-  asleep,
   debug,
   onError,
 } from './common.js'
@@ -185,13 +184,27 @@ async function closeDuplicateTabs (windowId, keyGetter, closePinned,
   }
 }
 
-async function startProgressNotification (progress) {
-  while (true) {
-    await asleep(NOTIFICATION_INTERVAL)
-    if (progress.end || progress.error) {
-      break
-    }
-    await notify(progress)
+function startProgressNotification (progress) {
+  let timerId
+  let stopped = false
+
+  const tick = () => {
+    timerId = setTimeout(() => {
+      if (stopped || progress.end || progress.error) {
+        return
+      }
+      tryNotify(progress).then((notified) => {
+        if (notified && !stopped) {
+          tick()
+        }
+      }).catch(onError)
+    }, NOTIFICATION_INTERVAL)
+  }
+
+  tick()
+  return () => {
+    stopped = true
+    globalThis.clearTimeout(timerId)
   }
 }
 
@@ -219,10 +232,17 @@ function getNotificationOptions (progress) {
 
 async function notify (progress) {
   const options = getNotificationOptions(progress)
-  if (await notifications.update(NOTIFICATION_ID, options)) {
-    return
-  }
   await notifications.create(NOTIFICATION_ID, options)
+}
+
+async function tryNotify (progress) {
+  try {
+    await notify(progress)
+    return true
+  } catch (error) {
+    onError(error)
+    return false
+  }
 }
 
 export async function run (windowId, keyType, closePinned, notification,
@@ -231,13 +251,14 @@ export async function run (windowId, keyType, closePinned, notification,
     done: 0,
   }
   let notifyEnabled = false
+  let stopProgressNotification
   try {
     notifyEnabled = notification &&
+      typeof notifications?.create === 'function' &&
       await permissions.contains(NOTIFICATION_PERMISSION)
     if (notifyEnabled) {
-      await notify(progress)
-      startProgressNotification(progress).catch(onError)
       progress.start = new Date()
+      stopProgressNotification = startProgressNotification(progress)
     }
 
     const keyGetter = KEY_GETTERS[keyType]
@@ -255,13 +276,19 @@ export async function run (windowId, keyType, closePinned, notification,
 
     if (notifyEnabled) {
       progress.end = new Date()
-      await notify(progress)
+      stopProgressNotification?.()
+      stopProgressNotification = undefined
+      await tryNotify(progress)
     }
   } catch (e) {
     onError(e)
     if (notifyEnabled) {
       progress.error = e
-      await notify(progress)
+      stopProgressNotification?.()
+      stopProgressNotification = undefined
+      await tryNotify(progress)
     }
+  } finally {
+    stopProgressNotification?.()
   }
 }

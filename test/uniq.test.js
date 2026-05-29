@@ -1,11 +1,13 @@
 import assert from 'node:assert/strict'
-import test from 'node:test'
+import test, { mock } from 'node:test'
 
 const state = {
   currentWindowId: 1,
   tabs: [],
   removed: [],
   activated: [],
+  notifications: [],
+  notificationError: undefined,
 }
 
 function cloneTab (tab) {
@@ -16,6 +18,8 @@ function resetTabs (tabs) {
   state.tabs = tabs.map(cloneTab)
   state.removed = []
   state.activated = []
+  state.notifications = []
+  state.notificationError = undefined
 }
 
 globalThis.browser = {
@@ -31,8 +35,13 @@ globalThis.browser = {
     },
   },
   notifications: {
-    create: async () => 'notification',
-    update: async () => false,
+    create: async (id, options) => {
+      if (state.notificationError) {
+        throw state.notificationError
+      }
+      state.notifications.push({ id, options })
+      return 'notification'
+    },
   },
   permissions: {
     contains: async () => true,
@@ -111,6 +120,41 @@ test('keeps the active duplicate tab when a non-active rival can be closed', asy
   ])
 
   await run(1, 'url', false, false)
+
+  assert.deepEqual(state.removed, [1])
+  assert.equal(state.tabs.find((tab) => tab.id === 2).active, true)
+})
+
+test('closes duplicate tabs and sends a notification without an update API', async () => {
+  resetTabs([
+    { id: 1, windowId: 1, index: 0, active: false, pinned: false, url: 'https://example.com/', title: 'Example' },
+    { id: 2, windowId: 1, index: 1, active: true, pinned: false, url: 'https://example.com/', title: 'Example' },
+  ])
+
+  await run(1, 'url', false, true)
+
+  assert.deepEqual(state.removed, [1])
+  assert.equal(state.tabs.find((tab) => tab.id === 2).active, true)
+  assert.equal(state.notifications.length, 1)
+  assert.equal(state.notifications[0].id, 'ClickTabUniq')
+  assert.equal(state.notifications[0].options.type, 'basic')
+  assert.equal(state.notifications[0].options.title, 'ClickTabUniq')
+  assert.equal(state.notifications[0].options.message.includes('successMessage'), true)
+})
+
+test('closes duplicate tabs when notification creation fails', async () => {
+  resetTabs([
+    { id: 1, windowId: 1, index: 0, active: false, pinned: false, url: 'https://example.com/', title: 'Example' },
+    { id: 2, windowId: 1, index: 1, active: true, pinned: false, url: 'https://example.com/', title: 'Example' },
+  ])
+  state.notificationError = new Error('Notification unavailable')
+
+  const errorMock = mock.method(globalThis.console, 'error', () => {})
+  try {
+    await run(1, 'url', false, true)
+  } finally {
+    errorMock.mock.restore()
+  }
 
   assert.deepEqual(state.removed, [1])
   assert.equal(state.tabs.find((tab) => tab.id === 2).active, true)
