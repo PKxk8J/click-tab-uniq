@@ -1,6 +1,6 @@
 {
   "name": "click-tab-uniq",
-  "version": "2.3.0",
+  "version": "3.0.0",
   "type": "module",
   "private": true,
   "description": "Close duplicate tabs from the Firefox right-click menu.",
