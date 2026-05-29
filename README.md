@@ -4,7 +4,7 @@
 
 https://addons.mozilla.org/addon/clicktabuniq/
 
-## Features
+## 機能
 
 - URL、ハッシュを除く URL、タイトルで重複タブを削除
 - タブグループ、コンテナ、分割ビューをまたぐ重複を既定で保護
@@ -14,12 +14,12 @@ https://addons.mozilla.org/addon/clicktabuniq/
 「守る」モードでは、異なるタブグループやコンテナのタブを別物として扱い、
 分割ビュー内のタブは削除対象から除外します。
 
-## Requirements
+## 動作要件
 
-- Firefox 142+
-- Node.js current LTS
+- Firefox 142 以降
+- Node.js 現行 LTS
 
-## Development
+## 開発
 
 ```sh
 npm install
@@ -28,12 +28,12 @@ npm run test
 npm run build
 ```
 
-The add-on version is managed in `extension/manifest.json`.
-`npm run build` creates `web-ext-artifacts/clicktabuniq-<version>.zip`.
+アドオンのバージョンは `extension/manifest.json` で管理します。
+`npm run build` は `web-ext-artifacts/clicktabuniq-<version>.zip` を作成します。
 
-`npm run run` starts Firefox with this extension loaded temporarily.
-The extension source lives in `extension/`.
+`npm run run` は、この拡張機能を一時的に読み込んだ Firefox を起動します。
+拡張機能のソースは `extension/` にあります。
 
-## Privacy
+## プライバシー
 
-This extension does not collect or transmit user data.
+この拡張機能はユーザーデータを収集または送信しません。

@@ -94,26 +94,26 @@ const {
   normalizeNotification,
 } = await import('../extension/common.js')
 
-test('normalizes contexts by keeping only supported menu contexts', () => {
+test('対応しているメニューコンテキストだけを残してコンテキストを正規化する', () => {
   assert.deepEqual(normalizeContexts(undefined), ['tab'])
   assert.deepEqual(normalizeContexts(['all', 'unknown', 'tab']), ['tab', 'all'])
   assert.deepEqual(normalizeContexts('tab'), [])
 })
 
-test('normalizes legacy menu item arrays to preserve-boundary modes', () => {
+test('旧形式のメニュー項目配列を境界維持モードに正規化する', () => {
   assert.deepEqual(normalizeMenuItems(['url', 'title']), {
     url: ['respectBoundaries'],
     title: ['respectBoundaries'],
   })
 })
 
-test('normalizes notification settings to a boolean', () => {
+test('通知設定を真偽値に正規化する', () => {
   assert.equal(normalizeNotification(undefined), false)
   assert.equal(normalizeNotification(true), true)
   assert.equal(normalizeNotification('true'), false)
 })
 
-test('keeps the active duplicate tab when a non-active rival can be closed', async () => {
+test('非アクティブな重複タブを閉じられる場合はアクティブな重複タブを残す', async () => {
   resetTabs([
     { id: 1, windowId: 1, index: 0, active: false, pinned: false, url: 'https://example.com/', title: 'Example' },
     { id: 2, windowId: 1, index: 1, active: true, pinned: false, url: 'https://example.com/', title: 'Example' },
@@ -125,7 +125,7 @@ test('keeps the active duplicate tab when a non-active rival can be closed', asy
   assert.equal(state.tabs.find((tab) => tab.id === 2).active, true)
 })
 
-test('closes duplicate tabs and sends a notification without an update API', async () => {
+test('update API がなくても重複タブを閉じて通知を送る', async () => {
   resetTabs([
     { id: 1, windowId: 1, index: 0, active: false, pinned: false, url: 'https://example.com/', title: 'Example' },
     { id: 2, windowId: 1, index: 1, active: true, pinned: false, url: 'https://example.com/', title: 'Example' },
@@ -142,7 +142,7 @@ test('closes duplicate tabs and sends a notification without an update API', asy
   assert.equal(state.notifications[0].options.message.includes('successMessage'), true)
 })
 
-test('closes duplicate tabs when notification creation fails', async () => {
+test('通知作成に失敗しても重複タブを閉じる', async () => {
   resetTabs([
     { id: 1, windowId: 1, index: 0, active: false, pinned: false, url: 'https://example.com/', title: 'Example' },
     { id: 2, windowId: 1, index: 1, active: true, pinned: false, url: 'https://example.com/', title: 'Example' },
@@ -160,7 +160,7 @@ test('closes duplicate tabs when notification creation fails', async () => {
   assert.equal(state.tabs.find((tab) => tab.id === 2).active, true)
 })
 
-test('does not close pinned duplicates when pinned tabs are not requested', async () => {
+test('固定タブが対象でない場合は固定タブの重複を閉じない', async () => {
   resetTabs([
     { id: 1, windowId: 1, index: 0, active: false, pinned: true, url: 'https://example.com/', title: 'Example' },
     { id: 2, windowId: 1, index: 1, active: false, pinned: true, url: 'https://example.com/', title: 'Example' },
@@ -172,7 +172,7 @@ test('does not close pinned duplicates when pinned tabs are not requested', asyn
   assert.deepEqual(state.removed, [])
 })
 
-test('closes pinned duplicates when pinned tabs are requested', async () => {
+test('固定タブが対象の場合は固定タブの重複を閉じる', async () => {
   resetTabs([
     { id: 1, windowId: 1, index: 0, active: false, pinned: true, url: 'https://example.com/', title: 'Example' },
     { id: 2, windowId: 1, index: 1, active: false, pinned: true, url: 'https://example.com/', title: 'Example' },
@@ -184,7 +184,7 @@ test('closes pinned duplicates when pinned tabs are requested', async () => {
   assert.deepEqual(state.removed, [2])
 })
 
-test('treats URL hash variants as duplicates for urlWithoutHash', async () => {
+test('urlWithoutHash では URL ハッシュ違いを重複として扱う', async () => {
   resetTabs([
     { id: 1, windowId: 1, index: 0, active: false, pinned: false, url: 'https://example.com/page#first', title: 'First' },
     { id: 2, windowId: 1, index: 1, active: true, pinned: false, url: 'https://example.com/page#second', title: 'Second' },
@@ -196,7 +196,7 @@ test('treats URL hash variants as duplicates for urlWithoutHash', async () => {
   assert.equal(state.tabs.find((tab) => tab.id === 2).active, true)
 })
 
-test('keeps duplicate tabs in different tab groups by default', async () => {
+test('既定では異なるタブグループの重複タブを残す', async () => {
   resetTabs([
     { id: 1, windowId: 1, index: 0, active: true, pinned: false, groupId: 1, url: 'https://example.com/', title: 'Example' },
     { id: 2, windowId: 1, index: 1, active: false, pinned: false, groupId: 2, url: 'https://example.com/', title: 'Example' },
@@ -207,7 +207,7 @@ test('keeps duplicate tabs in different tab groups by default', async () => {
   assert.deepEqual(state.removed, [])
 })
 
-test('closes duplicate tabs across tab groups when boundaries are ignored', async () => {
+test('境界を無視する場合はタブグループをまたいで重複タブを閉じる', async () => {
   resetTabs([
     { id: 1, windowId: 1, index: 0, active: true, pinned: false, groupId: 1, url: 'https://example.com/', title: 'Example' },
     { id: 2, windowId: 1, index: 1, active: false, pinned: false, groupId: 2, url: 'https://example.com/', title: 'Example' },
@@ -218,7 +218,7 @@ test('closes duplicate tabs across tab groups when boundaries are ignored', asyn
   assert.deepEqual(state.removed, [2])
 })
 
-test('keeps duplicate tabs in different containers by default', async () => {
+test('既定では異なるコンテナの重複タブを残す', async () => {
   resetTabs([
     { id: 1, windowId: 1, index: 0, active: true, pinned: false, cookieStoreId: 'firefox-default', url: 'https://example.com/', title: 'Example' },
     { id: 2, windowId: 1, index: 1, active: false, pinned: false, cookieStoreId: 'firefox-container-1', url: 'https://example.com/', title: 'Example' },
@@ -229,7 +229,7 @@ test('keeps duplicate tabs in different containers by default', async () => {
   assert.deepEqual(state.removed, [])
 })
 
-test('preserves split view tabs by default', async () => {
+test('既定では分割ビューのタブを保護する', async () => {
   resetTabs([
     { id: 1, windowId: 1, index: 0, active: false, pinned: false, splitViewId: -1, url: 'https://example.com/', title: 'Example' },
     { id: 2, windowId: 1, index: 1, active: false, pinned: false, splitViewId: 7, url: 'https://example.com/', title: 'Example' },
@@ -242,7 +242,7 @@ test('preserves split view tabs by default', async () => {
   assert.ok(state.tabs.find((tab) => tab.id === 2))
 })
 
-test('can close split view duplicate tabs when boundaries are ignored', async () => {
+test('境界を無視する場合は分割ビュー内の重複タブも閉じられる', async () => {
   resetTabs([
     { id: 1, windowId: 1, index: 0, active: false, pinned: false, splitViewId: -1, url: 'https://example.com/', title: 'Example' },
     { id: 2, windowId: 1, index: 1, active: false, pinned: false, splitViewId: 7, url: 'https://example.com/', title: 'Example' },
