@@ -28,6 +28,9 @@ npm run test
 npm run build
 ```
 
+The add-on version is managed in `extension/manifest.json`.
+`npm run build` creates `web-ext-artifacts/clicktabuniq-<version>.zip`.
+
 `npm run run` starts Firefox with this extension loaded temporarily.
 The extension source lives in `extension/`.
 
