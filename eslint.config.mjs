@@ -10,10 +10,10 @@ export default [
   },
   js.configs.recommended,
   {
-    files: ['*.js'],
+    files: ['extension/**/*.js'],
     languageOptions: {
-      ecmaVersion: 2020,
-      sourceType: 'script',
+      ecmaVersion: 2022,
+      sourceType: 'module',
       globals: {
         browser: 'readonly',
         console: 'readonly',
@@ -22,43 +22,7 @@ export default [
       },
     },
     rules: {
-      'no-unused-vars': ['error', {
-        varsIgnorePattern: '^(common|monitor|uniq)$',
-      }],
       semi: ['error', 'never'],
-    },
-  },
-  {
-    files: [
-      'menu.js',
-      'messaging.js',
-      'monitor.js',
-      'options.js',
-      'uniq.js',
-    ],
-    languageOptions: {
-      globals: {
-        common: 'readonly',
-      },
-    },
-  },
-  {
-    files: ['uniq.js'],
-    languageOptions: {
-      globals: {
-        monitor: 'readonly',
-      },
-    },
-  },
-  {
-    files: [
-      'menu.js',
-      'messaging.js',
-    ],
-    languageOptions: {
-      globals: {
-        uniq: 'readonly',
-      },
     },
   },
 ]

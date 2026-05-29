@@ -1,35 +1,25 @@
-'use strict'
-
-const {
-  i18n,
-} = browser
-const {
+import {
+  ALL_CONTEXTS,
+  ALL_MENU_ITEMS,
+  DEFAULT_CONTEXTS,
+  DEFAULT_MENU_ITEMS,
+  DEFAULT_NOTIFICATION,
   KEY_CONTEXTS,
   KEY_MENU_ITEMS,
   KEY_NOTIFICATION,
   KEY_SAVE,
-  ALL_CONTEXTS,
-  DEFAULT_CONTEXTS,
-  ALL_MENU_ITEMS,
-  DEFAULT_MENU_ITEMS,
-  DEFAULT_NOTIFICATION,
-  storageArea,
   debug,
   onError,
-} = common
+  storageArea,
+} from './common.js'
+
+const {
+  i18n,
+} = browser
 
 const LABEL_KEYS = ALL_CONTEXTS.concat(ALL_MENU_ITEMS,
   [KEY_CONTEXTS, KEY_MENU_ITEMS, KEY_NOTIFICATION, KEY_SAVE])
 
-/*
- * {
- *   "contexts": ["tab"],
- *   "menuItems": ["url", "title", ...],
- *   "notification": true
- * }
- */
-
-// 現在の設定を表示する
 async function restore () {
   const data = await storageArea.get()
   debug('Loaded ' + JSON.stringify(data))
@@ -53,7 +43,6 @@ async function restore () {
   document.getElementById(KEY_NOTIFICATION).checked = notification
 }
 
-// 設定を保存する
 async function save () {
   const contexts = []
   ALL_CONTEXTS.forEach((key) => {
@@ -76,29 +65,27 @@ async function save () {
     [KEY_MENU_ITEMS]: menuItems,
     [KEY_NOTIFICATION]: notification,
   }
-  // 古い形式のデータを消す
   await storageArea.clear()
   await storageArea.set(data)
   debug('Saved ' + JSON.stringify(data))
 }
 
-// 初期化
-(async function () {
-  function addCheckboxEntry (key, ul) {
-    const input = document.createElement('input')
-    input.type = 'checkbox'
-    input.id = key
-    const span = document.createElement('span')
-    span.id = 'label_' + key
-    const label = document.createElement('label')
-    label.appendChild(input)
-    label.appendChild(span)
-    const li = document.createElement('li')
-    li.appendChild(label)
+function addCheckboxEntry (key, ul) {
+  const input = document.createElement('input')
+  input.type = 'checkbox'
+  input.id = key
+  const span = document.createElement('span')
+  span.id = 'label_' + key
+  const label = document.createElement('label')
+  label.appendChild(input)
+  label.appendChild(span)
+  const li = document.createElement('li')
+  li.appendChild(label)
 
-    ul.appendChild(li)
-  }
+  ul.appendChild(li)
+}
 
+async function init () {
   const contextUl = document.getElementById(KEY_CONTEXTS)
   ALL_CONTEXTS.forEach((key) => addCheckboxEntry(key, contextUl))
 
@@ -110,7 +97,10 @@ async function save () {
       i18n.getMessage(key) + ' '
   })
 
-  document.addEventListener('DOMContentLoaded', () => restore().catch(onError))
   document.getElementById(KEY_SAVE).
     addEventListener('click', () => save().catch(onError))
-})().catch(onError)
+
+  await restore()
+}
+
+init().catch(onError)

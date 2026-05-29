@@ -1,6 +1,6 @@
 # click-tab-uniq
 
-タブ右クリックから重複するタブを削除する Firefox アドオン。
+タブ右クリックから重複するタブを削除する Firefox 専用アドオン。
 
 https://addons.mozilla.org/addon/clicktabuniq/
 
@@ -18,37 +18,8 @@ npm run build
 ```
 
 `npm run run` starts Firefox with this extension loaded temporarily.
+The extension source lives in `extension/`.
 
 ## Privacy
 
 This extension does not collect or transmit user data.
-
-## <span id="messaging"/> Messaging
-
-Other addons can use this addon by using [sendMessage](https://developer.mozilla.org/Add-ons/WebExtensions/API/runtime/sendMessage)
-
-```javascript
-browser.runtime.sendMessage('{e3e32590-2c56-405d-9f0f-9dc571a87d67}', {
-  type: 'uniq',
-  keyType: 'url',
-  windowId: 24,
-  closePinned: false,
-  notification: false
-})
-```
-
-
-#### extensionId
-
-`{e3e32590-2c56-405d-9f0f-9dc571a87d67}`
-
-
-#### message
-
-|Property name|Type|Description|
-|:--|:--|:--|
-|type|string|`uniq`|
-|keyType|string|`url` or `urlWithoutHash` or `title`|
-|windowId|number|The ID of a target window|
-|closePinned|boolean|Whether to close duplicate pinned tabs|
-|notification|boolean|Whether to show notification|

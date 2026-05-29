@@ -1,5 +1,5 @@
 {
-  "manifest_version": 2,
+  "manifest_version": 3,
   "name": "__MSG_name__",
   "version": "2.3.0",
   "description": "__MSG_description__",
@@ -16,19 +16,16 @@
     }
   },
   "permissions": [
-    "contextMenus",
+    "menus",
     "notifications",
     "storage",
     "tabs"
   ],
   "background": {
     "scripts": [
-      "common.js",
-      "monitor.js",
-      "uniq.js",
-      "messaging.js",
-      "menu.js"
-    ]
+      "background.js"
+    ],
+    "type": "module"
   },
   "default_locale": "en",
   "options_ui": {
