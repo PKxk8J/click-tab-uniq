@@ -7,6 +7,7 @@ import {
   KEY_TITLE,
   KEY_URL,
   KEY_URL_WITHOUT_HASH,
+  NOTIFICATION_PERMISSION,
   NOTIFICATION_ID,
   NOTIFICATION_INTERVAL,
   asleep,
@@ -17,6 +18,7 @@ import {
 const {
   i18n,
   notifications,
+  permissions,
   tabs,
 } = browser
 
@@ -156,7 +158,7 @@ async function startProgressNotification (progress) {
   }
 }
 
-async function notify (progress) {
+function getNotificationOptions (progress) {
   let message
   if (progress.error) {
     message = i18n.getMessage(KEY_FAILURE_MESSAGE, progress.error)
@@ -171,19 +173,30 @@ async function notify (progress) {
   } else {
     message = i18n.getMessage(KEY_CLOSING)
   }
-  await notifications.create(NOTIFICATION_ID, {
+  return {
     type: 'basic',
     title: NOTIFICATION_ID,
     message,
-  })
+  }
+}
+
+async function notify (progress) {
+  const options = getNotificationOptions(progress)
+  if (await notifications.update(NOTIFICATION_ID, options)) {
+    return
+  }
+  await notifications.create(NOTIFICATION_ID, options)
 }
 
 export async function run (windowId, keyType, closePinned, notification) {
   const progress = {
     done: 0,
   }
+  let notifyEnabled = false
   try {
-    if (notification) {
+    notifyEnabled = notification &&
+      await permissions.contains(NOTIFICATION_PERMISSION)
+    if (notifyEnabled) {
       await notify(progress)
       startProgressNotification(progress).catch(onError)
       progress.start = new Date()
@@ -197,13 +210,13 @@ export async function run (windowId, keyType, closePinned, notification) {
     await closeDuplicateTabs(windowId, keyGetter, closePinned, progress)
     debug('Finished')
 
-    if (notification) {
+    if (notifyEnabled) {
       progress.end = new Date()
       await notify(progress)
     }
   } catch (e) {
     onError(e)
-    if (notification) {
+    if (notifyEnabled) {
       progress.error = e
       await notify(progress)
     }

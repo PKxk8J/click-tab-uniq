@@ -24,6 +24,9 @@ const {
   tabs,
 } = browser
 
+let rebuildMenuPromise
+let rebuildMenuRequested = false
+
 function createMenuItem (properties) {
   return new Promise((resolve, reject) => {
     menus.create(properties, () => {
@@ -75,6 +78,24 @@ async function rebuildMenu () {
   }
 }
 
+function queueRebuildMenu () {
+  rebuildMenuRequested = true
+  if (!rebuildMenuPromise) {
+    rebuildMenuPromise = (async () => {
+      while (rebuildMenuRequested) {
+        rebuildMenuRequested = false
+        await rebuildMenu()
+      }
+    })().finally(() => {
+      rebuildMenuPromise = undefined
+      if (rebuildMenuRequested) {
+        queueRebuildMenu().catch(onError)
+      }
+    })
+  }
+  return rebuildMenuPromise
+}
+
 async function getCurrentTab () {
   const [tab] = await tabs.query({ active: true, currentWindow: true })
   return tab
@@ -95,11 +116,11 @@ async function handleMenuClick (info, tab) {
 }
 
 runtime.onInstalled.addListener(() => {
-  return rebuildMenu().catch(onError)
+  return queueRebuildMenu().catch(onError)
 })
 
 runtime.onStartup.addListener(() => {
-  return rebuildMenu().catch(onError)
+  return queueRebuildMenu().catch(onError)
 })
 
 storage.onChanged.addListener((changes, areaName) => {
@@ -107,7 +128,7 @@ storage.onChanged.addListener((changes, areaName) => {
     return
   }
   if (changes[KEY_CONTEXTS] || changes[KEY_MENU_ITEMS]) {
-    return rebuildMenu().catch(onError)
+    return queueRebuildMenu().catch(onError)
   }
 })
 

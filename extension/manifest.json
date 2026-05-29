@@ -17,9 +17,11 @@
   },
   "permissions": [
     "menus",
-    "notifications",
     "storage",
     "tabs"
+  ],
+  "optional_permissions": [
+    "notifications"
   ],
   "background": {
     "scripts": [

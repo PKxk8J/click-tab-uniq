@@ -30,6 +30,9 @@ export const ALL_MENU_ITEMS = [KEY_URL, KEY_URL_WITHOUT_HASH, KEY_TITLE]
 export const DEFAULT_MENU_ITEMS = [KEY_URL, KEY_TITLE]
 export const DEFAULT_NOTIFICATION = false
 
+export const NOTIFICATION_PERMISSION = {
+  permissions: ['notifications'],
+}
 export const DEBUG = (i18n.getMessage(KEY_DEBUG) === 'debug')
 export const NOTIFICATION_ID = i18n.getMessage(KEY_NAME)
 export const NOTIFICATION_INTERVAL = 10 * 1000

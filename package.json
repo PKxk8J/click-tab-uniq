@@ -1,12 +1,14 @@
 {
   "name": "click-tab-uniq",
   "version": "2.3.0",
+  "type": "module",
   "private": true,
   "description": "Close duplicate tabs from the Firefox right-click menu.",
   "scripts": {
     "lint": "npm run lint:web-ext && npm run lint:js",
     "lint:web-ext": "web-ext --config web-ext-config.mjs lint",
     "lint:js": "eslint .",
+    "test": "node --test",
     "build": "web-ext --config web-ext-config.mjs build --overwrite-dest",
     "run": "web-ext --config web-ext-config.mjs run"
   },

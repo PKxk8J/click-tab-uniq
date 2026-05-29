@@ -8,6 +8,7 @@ import {
   KEY_MENU_ITEMS,
   KEY_NOTIFICATION,
   KEY_SAVE,
+  NOTIFICATION_PERMISSION,
   debug,
   onError,
   storageArea,
@@ -15,6 +16,7 @@ import {
 
 const {
   i18n,
+  permissions,
 } = browser
 
 const LABEL_KEYS = ALL_CONTEXTS.concat(ALL_MENU_ITEMS,
@@ -29,6 +31,8 @@ async function restore () {
     [KEY_MENU_ITEMS]: menuItems = DEFAULT_MENU_ITEMS,
     [KEY_NOTIFICATION]: notification = DEFAULT_NOTIFICATION,
   } = data
+  const notificationAllowed = notification &&
+    await permissions.contains(NOTIFICATION_PERMISSION)
 
   const contextSet = new Set(contexts)
   ALL_CONTEXTS.forEach((key) => {
@@ -40,7 +44,18 @@ async function restore () {
     document.getElementById(key).checked = menuItemSet.has(key)
   })
 
-  document.getElementById(KEY_NOTIFICATION).checked = notification
+  document.getElementById(KEY_NOTIFICATION).checked = notificationAllowed
+}
+
+async function applyNotificationPermission (notification) {
+  if (notification) {
+    return await permissions.contains(NOTIFICATION_PERMISSION) ||
+      await permissions.request(NOTIFICATION_PERMISSION)
+  }
+  if (await permissions.contains(NOTIFICATION_PERMISSION)) {
+    await permissions.remove(NOTIFICATION_PERMISSION)
+  }
+  return false
 }
 
 async function save () {
@@ -58,7 +73,9 @@ async function save () {
     }
   })
 
-  const notification = document.getElementById(KEY_NOTIFICATION).checked
+  let notification = document.getElementById(KEY_NOTIFICATION).checked
+  notification = await applyNotificationPermission(notification)
+  document.getElementById(KEY_NOTIFICATION).checked = notification
 
   const data = {
     [KEY_CONTEXTS]: contexts,
