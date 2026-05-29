@@ -15,7 +15,7 @@
     run,
   } = uniq
 
-  function handler (message, sender, sendResponse) {
+  function handler (message) {
     (async function () {
       debug('Message ' + JSON.stringify(message) + ' was received')
       switch (message.type) {

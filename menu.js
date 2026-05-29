@@ -77,7 +77,7 @@
   // 初期化
   (async function () {
     // リアルタイムで設定を反映させる
-    storage.onChanged.addListener((changes, area) => (async function () {
+    storage.onChanged.addListener((changes) => (async function () {
       const menuItems = changes[KEY_MENU_ITEMS]
       if (menuItems && menuItems.newValue) {
         await changeMenu(menuItems.newValue)

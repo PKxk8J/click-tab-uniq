@@ -2,10 +2,26 @@
 
 タブ右クリックから重複するタブを削除する Firefox アドオン。
 
-e10s 対応。
-
 https://addons.mozilla.org/addon/clicktabuniq/
 
+## Requirements
+
+- Firefox 142+
+- Node.js current LTS
+
+## Development
+
+```sh
+npm install
+npm run lint
+npm run build
+```
+
+`npm run run` starts Firefox with this extension loaded temporarily.
+
+## Privacy
+
+This extension does not collect or transmit user data.
 
 ## <span id="messaging"/> Messaging
 

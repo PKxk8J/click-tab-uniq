@@ -112,5 +112,5 @@ async function save () {
 
   document.addEventListener('DOMContentLoaded', () => restore().catch(onError))
   document.getElementById(KEY_SAVE).
-    addEventListener('click', (e) => save().catch(onError))
+    addEventListener('click', () => save().catch(onError))
 })().catch(onError)

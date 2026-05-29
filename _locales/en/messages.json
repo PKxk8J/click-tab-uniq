@@ -6,6 +6,9 @@
   "name": {
     "message": "ClickTabUniq"
   },
+  "description": {
+    "message": "Close duplicate tabs from the right-click menu."
+  },
   "uniq": {
     "message": "Close Duplicate Tabs"
   },

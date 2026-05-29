@@ -174,7 +174,7 @@ var _export
       if (progress.end || progress.error) {
         break
       }
-      notify(progress)
+      await notify(progress)
     }
   }
 
@@ -209,11 +209,16 @@ var _export
     try {
       if (notification) {
         await notify(progress)
-        startProgressNotification(progress)
+        startProgressNotification(progress).catch(onError)
         progress.start = new Date()
       }
 
-      await run(windowId, KEY_GETTERS[keyType], closePinned, progress)
+      const keyGetter = KEY_GETTERS[keyType]
+      if (!keyGetter) {
+        throw new Error('Unsupported keyType: ' + keyType)
+      }
+
+      await run(windowId, keyGetter, closePinned, progress)
       debug('Finished')
 
       if (notification) {
