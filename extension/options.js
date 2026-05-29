@@ -2,15 +2,20 @@ import {
   ALL_CONTEXTS,
   ALL_MENU_ITEMS,
   ALL_MENU_MODES,
-  DEFAULT_CONTEXTS,
-  DEFAULT_NOTIFICATION,
   KEY_CONTEXTS,
+  KEY_FEEDBACK,
   KEY_MENU_ITEMS,
+  KEY_NAME,
   KEY_NOTIFICATION,
-  KEY_SAVE,
+  KEY_SAVE_STATUS_FAILED,
+  KEY_SAVE_STATUS_SAVED,
+  KEY_SAVE_STATUS_SAVING,
+  KEY_SETTINGS,
   NOTIFICATION_PERMISSION,
   debug,
+  normalizeContexts,
   normalizeMenuItems,
+  normalizeNotification,
   onError,
   storageArea,
 } from './common.js'
@@ -20,23 +25,45 @@ const {
   permissions,
 } = browser
 
+const SAVE_STATUS_CLEAR_DELAY = 1800
+
+let savePromise
+let saveRequested = false
+let saveStatusVersion = 0
+
 function getMenuModeInputId (key, mode) {
   return KEY_MENU_ITEMS + '_' + key + '_' + mode
 }
 
 function setLabelText (id, key) {
-  document.getElementById(id).textContent = ' ' + i18n.getMessage(key) + ' '
+  document.getElementById(id).textContent = i18n.getMessage(key)
+}
+
+function setSaveStatus (key, state = '', transient = false) {
+  const status = document.getElementById('saveStatus')
+  const version = ++saveStatusVersion
+  status.textContent = key ? i18n.getMessage(key) : ''
+  status.dataset.state = state
+
+  if (!transient) {
+    return
+  }
+
+  setTimeout(() => {
+    if (version === saveStatusVersion) {
+      status.textContent = ''
+      status.dataset.state = ''
+    }
+  }, SAVE_STATUS_CLEAR_DELAY)
 }
 
 async function restore () {
   const data = await storageArea.get()
   debug('Loaded ' + JSON.stringify(data))
 
-  const {
-    [KEY_CONTEXTS]: contexts = DEFAULT_CONTEXTS,
-    [KEY_NOTIFICATION]: notification = DEFAULT_NOTIFICATION,
-  } = data
+  const contexts = normalizeContexts(data[KEY_CONTEXTS])
   const menuItems = normalizeMenuItems(data[KEY_MENU_ITEMS])
+  const notification = normalizeNotification(data[KEY_NOTIFICATION])
   const notificationAllowed = notification &&
     await permissions.contains(NOTIFICATION_PERMISSION)
 
@@ -58,8 +85,7 @@ async function restore () {
 
 async function applyNotificationPermission (notification) {
   if (notification) {
-    return await permissions.contains(NOTIFICATION_PERMISSION) ||
-      await permissions.request(NOTIFICATION_PERMISSION)
+    return await permissions.request(NOTIFICATION_PERMISSION)
   }
   if (await permissions.contains(NOTIFICATION_PERMISSION)) {
     await permissions.remove(NOTIFICATION_PERMISSION)
@@ -88,67 +114,149 @@ async function save () {
     }
   })
 
-  let notification = document.getElementById(KEY_NOTIFICATION).checked
-  notification = await applyNotificationPermission(notification)
-  document.getElementById(KEY_NOTIFICATION).checked = notification
+  const notificationInput = document.getElementById(KEY_NOTIFICATION)
+  let notification = notificationInput.checked
+  if (notification && !await permissions.contains(NOTIFICATION_PERMISSION)) {
+    notification = false
+    notificationInput.checked = false
+  }
 
   const data = {
     [KEY_CONTEXTS]: contexts,
     [KEY_MENU_ITEMS]: menuItems,
     [KEY_NOTIFICATION]: notification,
   }
-  await storageArea.clear()
   await storageArea.set(data)
   debug('Saved ' + JSON.stringify(data))
 }
 
-function addCheckboxEntry (key, ul, inputId = key) {
+function queueSave () {
+  saveRequested = true
+  setSaveStatus(KEY_SAVE_STATUS_SAVING, 'saving')
+
+  if (!savePromise) {
+    savePromise = runSaveQueue()
+  }
+}
+
+async function runSaveQueue () {
+  try {
+    while (saveRequested) {
+      saveRequested = false
+      await save()
+    }
+    setSaveStatus(KEY_SAVE_STATUS_SAVED, 'saved', true)
+  } catch (error) {
+    setSaveStatus(KEY_SAVE_STATUS_FAILED, 'error')
+    onError(error)
+  } finally {
+    savePromise = undefined
+    if (saveRequested) {
+      queueSave()
+    }
+  }
+}
+
+function createSwitch (inputId) {
   const input = document.createElement('input')
   input.type = 'checkbox'
   input.id = inputId
-  const span = document.createElement('span')
-  span.textContent = ' ' + i18n.getMessage(key) + ' '
-  const label = document.createElement('label')
-  label.appendChild(input)
-  label.appendChild(span)
-  const li = document.createElement('li')
-  li.appendChild(label)
+  input.className = 'switch-input'
 
-  ul.appendChild(li)
+  const control = document.createElement('span')
+  control.className = 'switch-control'
+  control.setAttribute('aria-hidden', 'true')
+
+  const switchWrapper = document.createElement('span')
+  switchWrapper.className = 'switch'
+  switchWrapper.appendChild(input)
+  switchWrapper.appendChild(control)
+
+  return switchWrapper
 }
 
-function addMenuItemEntry (key, ul) {
-  const span = document.createElement('span')
-  span.textContent = i18n.getMessage(key)
+function createToggleLabel (key, inputId = key, className = 'toggle-row') {
+  const title = document.createElement('span')
+  title.className = 'setting-title'
+  title.textContent = i18n.getMessage(key)
 
-  const modeUl = document.createElement('ul')
-  modeUl.style.listStyleType = 'none'
+  const copy = document.createElement('span')
+  copy.className = 'setting-copy'
+  copy.appendChild(title)
+
+  const label = document.createElement('label')
+  label.className = className
+  label.appendChild(copy)
+  label.appendChild(createSwitch(inputId))
+
+  return label
+}
+
+function addCheckboxEntry (key, container, inputId = key) {
+  container.appendChild(createToggleLabel(key, inputId))
+}
+
+function addModeEntry (key, container, inputId) {
+  container.appendChild(createToggleLabel(key, inputId, 'mode-row'))
+}
+
+function addMenuItemEntry (key, container) {
+  const title = document.createElement('h3')
+  title.textContent = i18n.getMessage(key)
+
+  const modeList = document.createElement('div')
+  modeList.className = 'mode-list'
   ALL_MENU_MODES.forEach((mode) => {
-    addCheckboxEntry(mode, modeUl, getMenuModeInputId(key, mode))
+    addModeEntry(mode, modeList, getMenuModeInputId(key, mode))
   })
 
-  const li = document.createElement('li')
-  li.appendChild(span)
-  li.appendChild(modeUl)
-  ul.appendChild(li)
+  const item = document.createElement('article')
+  item.className = 'menu-item'
+  item.appendChild(title)
+  item.appendChild(modeList)
+
+  container.appendChild(item)
+}
+
+function bindAutoSave () {
+  document.querySelectorAll('input[type="checkbox"]').forEach((input) => {
+    input.addEventListener('change', () => {
+      handleInputChange(input).catch((error) => {
+        if (input.id === KEY_NOTIFICATION) {
+          input.checked = false
+        }
+        onError(error)
+        queueSave()
+      })
+    })
+  })
+}
+
+async function handleInputChange (input) {
+  if (input.id === KEY_NOTIFICATION) {
+    input.checked = await applyNotificationPermission(input.checked)
+  }
+  queueSave()
 }
 
 async function init () {
-  const contextUl = document.getElementById(KEY_CONTEXTS)
-  ALL_CONTEXTS.forEach((key) => addCheckboxEntry(key, contextUl))
+  const contextContainer = document.getElementById(KEY_CONTEXTS)
+  ALL_CONTEXTS.forEach((key) => addCheckboxEntry(key, contextContainer))
 
-  const itemUl = document.getElementById(KEY_MENU_ITEMS)
-  ALL_MENU_ITEMS.forEach((key) => addMenuItemEntry(key, itemUl))
+  const itemContainer = document.getElementById(KEY_MENU_ITEMS)
+  ALL_MENU_ITEMS.forEach((key) => addMenuItemEntry(key, itemContainer))
 
+  const notificationContainer = document.getElementById('notificationSetting')
+  addCheckboxEntry(KEY_NOTIFICATION, notificationContainer)
+
+  setLabelText('label_' + KEY_NAME, KEY_NAME)
+  setLabelText('label_' + KEY_SETTINGS, KEY_SETTINGS)
   setLabelText('label_' + KEY_CONTEXTS, KEY_CONTEXTS)
   setLabelText('label_' + KEY_MENU_ITEMS, KEY_MENU_ITEMS)
-  setLabelText('label_' + KEY_NOTIFICATION, KEY_NOTIFICATION)
-  setLabelText('label_' + KEY_SAVE, KEY_SAVE)
-
-  document.getElementById(KEY_SAVE).
-    addEventListener('click', () => save().catch(onError))
+  setLabelText('label_' + KEY_FEEDBACK, KEY_FEEDBACK)
 
   await restore()
+  bindAutoSave()
 }
 
 init().catch(onError)

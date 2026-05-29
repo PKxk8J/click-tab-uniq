@@ -42,8 +42,20 @@
   "menuItems": {
     "message": "Menu Items"
   },
-  "save": {
-    "message": "Save"
+  "settings": {
+    "message": "Settings"
+  },
+  "feedback": {
+    "message": "Feedback"
+  },
+  "saveStatusSaving": {
+    "message": "Saving..."
+  },
+  "saveStatusSaved": {
+    "message": "Saved"
+  },
+  "saveStatusFailed": {
+    "message": "Save failed"
   },
   "closing": {
     "message": "Closing duplicate tabs..."

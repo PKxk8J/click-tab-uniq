@@ -80,14 +80,28 @@ const {
   run,
 } = await import('../extension/uniq.js')
 const {
+  normalizeContexts,
   normalizeMenuItems,
+  normalizeNotification,
 } = await import('../extension/common.js')
+
+test('normalizes contexts by keeping only supported menu contexts', () => {
+  assert.deepEqual(normalizeContexts(undefined), ['tab'])
+  assert.deepEqual(normalizeContexts(['all', 'unknown', 'tab']), ['tab', 'all'])
+  assert.deepEqual(normalizeContexts('tab'), [])
+})
 
 test('normalizes legacy menu item arrays to preserve-boundary modes', () => {
   assert.deepEqual(normalizeMenuItems(['url', 'title']), {
     url: ['respectBoundaries'],
     title: ['respectBoundaries'],
   })
+})
+
+test('normalizes notification settings to a boolean', () => {
+  assert.equal(normalizeNotification(undefined), false)
+  assert.equal(normalizeNotification(true), true)
+  assert.equal(normalizeNotification('true'), false)
 })
 
 test('keeps the active duplicate tab when a non-active rival can be closed', async () => {

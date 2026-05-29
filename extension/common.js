@@ -22,7 +22,11 @@ export const KEY_UNIQ_BY = 'uniqBy'
 export const KEY_CONTEXTS = 'contexts'
 export const KEY_MENU_ITEMS = 'menuItems'
 export const KEY_NOTIFICATION = 'notification'
-export const KEY_SAVE = 'save'
+export const KEY_FEEDBACK = 'feedback'
+export const KEY_SETTINGS = 'settings'
+export const KEY_SAVE_STATUS_FAILED = 'saveStatusFailed'
+export const KEY_SAVE_STATUS_SAVED = 'saveStatusSaved'
+export const KEY_SAVE_STATUS_SAVING = 'saveStatusSaving'
 export const KEY_CLOSING = 'closing'
 export const KEY_PROGRESS = 'progress'
 export const KEY_SUCCESS_MESSAGE = 'successMessage'
@@ -69,6 +73,22 @@ export async function getValue (key, defaultValue) {
   return value
 }
 
+export function cloneContexts (contexts) {
+  return [...contexts]
+}
+
+export function normalizeContexts (contexts) {
+  if (contexts === undefined) {
+    return cloneContexts(DEFAULT_CONTEXTS)
+  }
+
+  if (!Array.isArray(contexts)) {
+    return []
+  }
+
+  return ALL_CONTEXTS.filter((key) => contexts.includes(key))
+}
+
 export function cloneMenuItems (menuItems) {
   const normalized = {}
   for (const key of ALL_MENU_ITEMS) {
@@ -78,6 +98,14 @@ export function cloneMenuItems (menuItems) {
     }
   }
   return normalized
+}
+
+export function normalizeNotification (notification) {
+  if (notification === undefined) {
+    return DEFAULT_NOTIFICATION
+  }
+
+  return notification === true
 }
 
 export function normalizeMenuItems (menuItems) {

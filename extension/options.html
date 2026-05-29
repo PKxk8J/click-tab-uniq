@@ -3,24 +3,41 @@
 <html>
 <head>
     <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light dark">
+    <link rel="stylesheet" href="options.css">
 </head>
 
 <body>
 
-<form>
-    <ul>
-        <li><span id="label_contexts"></span>
-            <ul id="contexts" style="list-style-type:none"></ul>
-        </li>
-        <li><span id="label_menuItems"></span>
-            <ul id="menuItems" style="list-style-type:none"></ul>
-        </li>
-        <li><label><input id="notification" type="checkbox"/><span id="label_notification"></span></label></li>
-    </ul>
-    <div>
-        <button id="save" type="button"><span id="label_save"></span></button>
-    </div>
-</form>
+<main class="options-page">
+    <header class="page-header">
+        <p class="eyebrow" id="label_settings"></p>
+        <h1 id="label_name"></h1>
+        <p class="save-status" id="saveStatus" role="status" aria-live="polite"></p>
+    </header>
+
+    <section class="settings-section" aria-labelledby="label_contexts">
+        <div class="section-heading">
+            <h2 id="label_contexts"></h2>
+        </div>
+        <div class="toggle-list" id="contexts"></div>
+    </section>
+
+    <section class="settings-section" aria-labelledby="label_menuItems">
+        <div class="section-heading">
+            <h2 id="label_menuItems"></h2>
+        </div>
+        <div class="menu-list" id="menuItems"></div>
+    </section>
+
+    <section class="settings-section" aria-labelledby="label_feedback">
+        <div class="section-heading">
+            <h2 id="label_feedback"></h2>
+        </div>
+        <div class="toggle-list" id="notificationSetting"></div>
+    </section>
+</main>
 
 <script type="module" src="options.js"></script>
 

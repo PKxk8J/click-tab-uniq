@@ -4,8 +4,6 @@ import {
   KEY_IGNORE_BOUNDARIES_MENU,
   KEY_RESPECT_BOUNDARIES,
   KEY_RESPECT_BOUNDARIES_MENU,
-  DEFAULT_CONTEXTS,
-  DEFAULT_NOTIFICATION,
   KEY_CONTEXTS,
   KEY_MENU_ITEMS,
   KEY_NOTIFICATION,
@@ -13,7 +11,9 @@ import {
   KEY_UNIQ_BY,
   debug,
   getValue,
+  normalizeContexts,
   normalizeMenuItems,
+  normalizeNotification,
   onError,
 } from './common.js'
 import {
@@ -97,10 +97,11 @@ function createMenuItem (properties) {
 }
 
 async function rebuildMenu () {
-  const [contexts, storedMenuItems] = await Promise.all([
-    getValue(KEY_CONTEXTS, DEFAULT_CONTEXTS),
+  const [storedContexts, storedMenuItems] = await Promise.all([
+    getValue(KEY_CONTEXTS),
     getValue(KEY_MENU_ITEMS),
   ])
+  const contexts = normalizeContexts(storedContexts)
   const menuItems = normalizeMenuItems(storedMenuItems)
   const entries = getMenuEntries(menuItems)
 
@@ -207,7 +208,9 @@ async function handleMenuClick (info, tab) {
     return
   }
 
-  const notification = await getValue(KEY_NOTIFICATION, DEFAULT_NOTIFICATION)
+  const notification = normalizeNotification(
+    await getValue(KEY_NOTIFICATION),
+  )
   await run(targetTab.windowId, entry.key, targetTab.pinned, notification,
     entry.mode)
 }
