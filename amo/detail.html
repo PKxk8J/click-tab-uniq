@@ -1,11 +1,16 @@
-You can close duplicate tabs from the right click menu on tabs.
+ClickTabUniq closes duplicate tabs directly from Firefox's right-click menu.
 
-You can check duplicates by
+Choose how duplicates are detected:
 <ul>
     <li>URL</li>
-    <li>URL without Hash</li>
+    <li>URL without hash</li>
     <li>Title</li>
 </ul>
 
-Pinned tabs are closed if and only if the right click menu is opened on pinned tabs.
-Optional notifications show progress.
+By default, tabs in different tab groups, containers, and split views are protected so separate browsing contexts are not mixed together.
+If you need a wider cleanup, you can add menu actions that ignore those boundaries.
+
+The menu stays compact when only one action is enabled, and expands into grouped choices when multiple rules or cleanup modes are enabled.
+Pinned tabs are cleaned up only when you run the command from a pinned tab.
+
+Optional notifications can show progress and the final result.
