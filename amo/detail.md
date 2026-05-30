@@ -1,11 +1,10 @@
 ClickTabUniq closes duplicate tabs directly from Firefox's right-click menu.
 
 Choose how duplicates are detected:
-<ul>
-    <li>URL</li>
-    <li>URL without hash</li>
-    <li>Title</li>
-</ul>
+
+- URL
+- URL without hash
+- Title
 
 By default, tabs in different tab groups, containers, and split views are protected so separate browsing contexts are not mixed together.
 If you need a wider cleanup, you can add menu actions that ignore those boundaries.
