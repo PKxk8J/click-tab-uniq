@@ -19,7 +19,6 @@ import {
 
 const {
   i18n,
-  notifications,
   permissions,
   tabs,
 } = browser
@@ -232,7 +231,7 @@ function getNotificationOptions (progress) {
 
 async function notify (progress) {
   const options = getNotificationOptions(progress)
-  await notifications.create(NOTIFICATION_ID, options)
+  await browser.notifications.create(NOTIFICATION_ID, options)
 }
 
 async function tryNotify (progress) {
@@ -254,7 +253,7 @@ export async function run (windowId, keyType, closePinned, notification,
   let stopProgressNotification
   try {
     notifyEnabled = notification &&
-      typeof notifications?.create === 'function' &&
+      typeof browser.notifications?.create === 'function' &&
       await permissions.contains(NOTIFICATION_PERMISSION)
     if (notifyEnabled) {
       progress.start = new Date()
