@@ -1,38 +1,39 @@
 # click-tab-uniq
 
-タブ右クリックから重複するタブを削除する Firefox アドオン。
-
-e10s 対応。
+タブ右クリックから重複するタブを削除する Firefox 専用アドオン。
 
 https://addons.mozilla.org/addon/clicktabuniq/
 
+## 機能
 
-## <span id="messaging"/> Messaging
+- URL、ハッシュを除く URL、タイトルで重複タブを削除
+- タブグループ、コンテナ、分割ビューをまたぐ重複を既定で保護
+- 設定により、タブグループ、コンテナ、分割ビューを無視した削除も選択可能
+- 固定タブから実行した場合のみ、固定タブ同士の重複も削除
 
-Other addons can use this addon by using [sendMessage](https://developer.mozilla.org/Add-ons/WebExtensions/API/runtime/sendMessage)
+「守る」モードでは、異なるタブグループやコンテナのタブを別物として扱い、
+分割ビュー内のタブは削除対象から除外します。
 
-```javascript
-browser.runtime.sendMessage('{e3e32590-2c56-405d-9f0f-9dc571a87d67}', {
-  type: 'uniq',
-  keyType: 'url',
-  windowId: 24,
-  closePinned: false,
-  notification: false
-})
+## 動作要件
+
+- Firefox 142 以降
+- Node.js 現行 LTS
+
+## 開発
+
+```sh
+npm install
+npm run lint
+npm run test
+npm run build
 ```
 
+アドオンのバージョンは `extension/manifest.json` で管理します。
+`npm run build` は `web-ext-artifacts/clicktabuniq-<version>.zip` を作成します。
 
-#### extensionId
+`npm run run` は、この拡張機能を一時的に読み込んだ Firefox を起動します。
+拡張機能のソースは `extension/` にあります。
 
-`{e3e32590-2c56-405d-9f0f-9dc571a87d67}`
+## プライバシー
 
-
-#### message
-
-|Property name|Type|Description|
-|:--|:--|:--|
-|type|string|`uniq`|
-|keyType|string|`url` or `urlWithoutHash` or `title`|
-|windowId|number|The ID of a target window|
-|closePinned|boolean|Whether to close duplicate pinned tabs|
-|notification|boolean|Whether to show notification|
+この拡張機能はユーザーデータを収集または送信しません。

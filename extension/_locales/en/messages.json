@@ -6,6 +6,9 @@
   "name": {
     "message": "ClickTabUniq"
   },
+  "description": {
+    "message": "Close duplicate tabs from the right-click menu."
+  },
   "uniq": {
     "message": "Close Duplicate Tabs"
   },
@@ -21,14 +24,38 @@
   "title": {
     "message": "Title"
   },
+  "respectBoundaries": {
+    "message": "Preserve groups, containers, and split views"
+  },
+  "ignoreBoundaries": {
+    "message": "Ignore groups, containers, and split views"
+  },
+  "respectBoundariesMenu": {
+    "message": "Respect boundaries"
+  },
+  "ignoreBoundariesMenu": {
+    "message": "Ignore boundaries"
+  },
   "notification": {
     "message": "Notification"
   },
   "menuItems": {
     "message": "Menu Items"
   },
-  "save": {
-    "message": "Save"
+  "settings": {
+    "message": "Settings"
+  },
+  "feedback": {
+    "message": "Feedback"
+  },
+  "saveStatusSaving": {
+    "message": "Saving..."
+  },
+  "saveStatusSaved": {
+    "message": "Saved"
+  },
+  "saveStatusFailed": {
+    "message": "Save failed"
   },
   "closing": {
     "message": "Closing duplicate tabs..."
