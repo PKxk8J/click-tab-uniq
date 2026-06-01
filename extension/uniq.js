@@ -14,6 +14,9 @@ import {
   NOTIFICATION_ID,
   NOTIFICATION_INTERVAL,
   debug,
+  getTabContainerId,
+  getTabGroupId,
+  isSplitViewTab,
   onError,
 } from './common.js'
 
@@ -27,11 +30,6 @@ const KEY_GETTERS = {
   [KEY_URL]: (tab) => tab.url,
   [KEY_URL_WITHOUT_HASH]: (tab) => tab.url.split('#')[0],
   [KEY_TITLE]: (tab) => tab.title,
-}
-
-function isSplitViewTab (tab) {
-  return tab.splitViewId !== undefined &&
-    tab.splitViewId !== (tabs.SPLIT_VIEW_ID_NONE ?? -1)
 }
 
 function canRemoveTab (tab, closePinned, respectBoundaries) {
@@ -49,8 +47,8 @@ function getTabKey (tab, keyGetter, respectBoundaries) {
 
   return JSON.stringify([
     key,
-    tab.cookieStoreId ?? '',
-    tab.groupId ?? (tabs.TAB_GROUP_ID_NONE ?? -1),
+    getTabContainerId(tab),
+    getTabGroupId(tab),
   ])
 }
 
@@ -108,24 +106,25 @@ async function getActiveTabId (windowId) {
   return activeTab && activeTab.id
 }
 
-async function closeDuplicateTabs (windowId, keyGetter, closePinned,
-  respectBoundaries, progress) {
-  const tabList = await tabs.query({ windowId })
-  progress.all = tabList.length
-
+function createDuplicatePlan (tabList, keyGetter, closePinned,
+  respectBoundaries) {
   const idToEntry = new Map()
-  const keyToSurviveId = new Map()
+  const keyToPlan = new Map()
   const removeIds = []
+
   for (const tab of tabList) {
     const key = getTabKey(tab, keyGetter, respectBoundaries)
+    const entry = { tab, key }
+    let plan = keyToPlan.get(key)
 
-    idToEntry.set(tab.id, { tab, key })
-    if (!keyToSurviveId.has(key)) {
-      keyToSurviveId.set(key, tab.id)
+    idToEntry.set(tab.id, entry)
+    if (!plan) {
+      plan = { key, survivorId: tab.id }
+      keyToPlan.set(key, plan)
       continue
     }
 
-    const rival = idToEntry.get(keyToSurviveId.get(key)).tab
+    const rival = idToEntry.get(plan.survivorId).tab
     const canRemoveTabCurrent = canRemoveTab(tab, closePinned,
       respectBoundaries)
     const canRemoveTabRival = canRemoveTab(rival, closePinned,
@@ -133,49 +132,63 @@ async function closeDuplicateTabs (windowId, keyGetter, closePinned,
 
     if (!canRemoveTabCurrent) {
       if (canRemoveTabRival) {
-        keyToSurviveId.set(key, tab.id)
+        plan.survivorId = tab.id
         removeIds.push(rival.id)
       }
-      continue
-    }
-
-    if (!canRemoveTabRival) {
-      removeIds.push(tab.id)
       continue
     }
 
     removeIds.push(tab.id)
   }
 
+  return {
+    idToEntry,
+    keyToPlan,
+    removeIds,
+  }
+}
+
+async function keepActiveDuplicateIfPossible (windowId, target, plan,
+  removeIdSet, closePinned, respectBoundaries) {
+  const activeTabId = await getActiveTabId(windowId)
+  const targetIndex = target.indexOf(activeTabId)
+  if (targetIndex < 0) {
+    return
+  }
+
+  const activeEntry = plan.idToEntry.get(activeTabId)
+  const duplicatePlan = activeEntry && plan.keyToPlan.get(activeEntry.key)
+  const rival = plan.idToEntry.get(duplicatePlan?.survivorId)?.tab
+  if (!activeEntry || !rival) {
+    return
+  }
+
+  if (canRemoveTab(rival, closePinned, respectBoundaries)) {
+    duplicatePlan.survivorId = activeTabId
+    target[targetIndex] = rival.id
+    removeIdSet.delete(activeTabId)
+    removeIdSet.add(rival.id)
+    return
+  }
+
+  await activateBest(activeEntry.tab.windowId, removeIdSet)
+}
+
+async function closeDuplicateTabs (windowId, keyGetter, closePinned,
+  respectBoundaries, progress) {
+  const tabList = await tabs.query({ windowId })
+  progress.all = tabList.length
+
+  const plan = createDuplicatePlan(tabList, keyGetter, closePinned,
+    respectBoundaries)
+  const { removeIds } = plan
+
   progress.target = removeIds.length
   const removeIdSet = new Set(removeIds)
   for (let i = removeIds.length; i > 0; i -= BULK_SIZE) {
     const target = removeIds.slice(Math.max(0, i - BULK_SIZE), i)
-    const activeTabId = await getActiveTabId(windowId)
-
-    for (let j = 0; j < target.length; j++) {
-      const id = target[j]
-      if (id !== activeTabId) {
-        continue
-      }
-
-      const entry = idToEntry.get(id)
-      const rival = idToEntry.get(keyToSurviveId.get(entry.key))?.tab
-      if (!rival) {
-        break
-      }
-
-      if (canRemoveTab(rival, closePinned, respectBoundaries)) {
-        keyToSurviveId.set(entry.key, id)
-        target[j] = rival.id
-        removeIdSet.delete(id)
-        removeIdSet.add(rival.id)
-        break
-      }
-
-      await activateBest(entry.tab.windowId, removeIdSet)
-      break
-    }
+    await keepActiveDuplicateIfPossible(windowId, target, plan, removeIdSet,
+      closePinned, respectBoundaries)
 
     await tabs.remove(target)
     debug('Tabs' + target + ' were closed')

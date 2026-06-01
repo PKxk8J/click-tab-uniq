@@ -260,6 +260,34 @@ test('境界がある場合は守る/無視するメニューを表示する', a
   )
 })
 
+test('境界がある場合の葉メニューから重複タブを削除できる', async () => {
+  resetState({
+    menuItems: { url: ['respectBoundaries', 'ignoreBoundaries'] },
+    tabs: [
+      {
+        id: 1,
+        windowId: 1,
+        index: 0,
+        active: true,
+        groupId: 10,
+        url: 'https://example.com/duplicate',
+      },
+      {
+        id: 2,
+        windowId: 1,
+        index: 1,
+        groupId: 20,
+        url: 'https://example.com/duplicate',
+      },
+    ],
+  })
+  await rebuildMenu()
+  await showMenu(1)
+  await clickMenu('mode:url:ignoreBoundaries', 1)
+
+  assert.deepEqual(state.removed, [2])
+})
+
 test('表示ごとに境界の有無へ合わせて動的メニューを描き直す', async () => {
   resetState({
     menuItems: { url: ['respectBoundaries', 'ignoreBoundaries'] },

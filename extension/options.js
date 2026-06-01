@@ -12,6 +12,7 @@ import {
   KEY_SAVE_STATUS_SAVING,
   KEY_SETTINGS,
   NOTIFICATION_PERMISSION,
+  createQueuedTask,
   debug,
   normalizeContexts,
   normalizeMenuItems,
@@ -27,8 +28,6 @@ const {
 
 const SAVE_STATUS_CLEAR_DELAY = 1800
 
-let savePromise
-let saveRequested = false
 let saveStatusVersion = 0
 
 function getMenuModeInputId (key, mode) {
@@ -130,31 +129,19 @@ async function save () {
   debug('Saved ' + JSON.stringify(data))
 }
 
-function queueSave () {
-  saveRequested = true
-  setSaveStatus(KEY_SAVE_STATUS_SAVING, 'saving')
-
-  if (!savePromise) {
-    savePromise = runSaveQueue()
-  }
-}
-
-async function runSaveQueue () {
-  try {
-    while (saveRequested) {
-      saveRequested = false
-      await save()
-    }
+const runQueuedSave = createQueuedTask(save, {
+  onSuccess: () => {
     setSaveStatus(KEY_SAVE_STATUS_SAVED, 'saved', true)
-  } catch (error) {
+  },
+  onFailure: (error) => {
     setSaveStatus(KEY_SAVE_STATUS_FAILED, 'error')
     onError(error)
-  } finally {
-    savePromise = undefined
-    if (saveRequested) {
-      queueSave()
-    }
-  }
+  },
+})
+
+function queueSave () {
+  setSaveStatus(KEY_SAVE_STATUS_SAVING, 'saving')
+  runQueuedSave()
 }
 
 function createSwitch (inputId) {

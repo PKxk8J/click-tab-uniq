@@ -1,6 +1,7 @@
 const {
   i18n,
   storage,
+  tabs,
 } = browser
 
 export const KEY_DEBUG = 'debug'
@@ -62,10 +63,6 @@ export function onError (error) {
   console.error(error)
 }
 
-export async function asleep (msec) {
-  return new Promise(resolve => setTimeout(resolve, msec))
-}
-
 export async function getValue (key, defaultValue) {
   const {
     [key]: value = defaultValue,
@@ -73,13 +70,71 @@ export async function getValue (key, defaultValue) {
   return value
 }
 
-export function cloneContexts (contexts) {
-  return [...contexts]
+export function createQueuedTask (task, { onSuccess, onFailure = onError } = {}) {
+  let promise
+  let requested = false
+
+  const run = async () => {
+    try {
+      while (requested) {
+        requested = false
+        await task()
+      }
+      onSuccess?.()
+    } catch (error) {
+      onFailure(error)
+    } finally {
+      promise = undefined
+      if (requested) {
+        queue()
+      }
+    }
+  }
+
+  function queue () {
+    requested = true
+    if (!promise) {
+      promise = run()
+    }
+    return promise
+  }
+
+  return queue
+}
+
+export function getNoGroupId () {
+  return browser.tabGroups?.TAB_GROUP_ID_NONE ?? tabs.TAB_GROUP_ID_NONE ?? -1
+}
+
+export function getTabGroupId (tab) {
+  return tab.groupId ?? getNoGroupId()
+}
+
+export function getTabContainerId (tab) {
+  return tab.cookieStoreId ?? ''
+}
+
+export function isGroupedTab (tab) {
+  return tab.groupId !== undefined && tab.groupId !== getNoGroupId()
+}
+
+export function isContainerTab (tab) {
+  const cookieStoreId = getTabContainerId(tab)
+  return cookieStoreId !== '' && cookieStoreId !== 'firefox-default'
+}
+
+export function isSplitViewTab (tab) {
+  return tab.splitViewId !== undefined &&
+    tab.splitViewId !== (tabs.SPLIT_VIEW_ID_NONE ?? -1)
+}
+
+export function hasTabBoundary (tab) {
+  return isGroupedTab(tab) || isContainerTab(tab) || isSplitViewTab(tab)
 }
 
 export function normalizeContexts (contexts) {
   if (contexts === undefined) {
-    return cloneContexts(DEFAULT_CONTEXTS)
+    return [...DEFAULT_CONTEXTS]
   }
 
   if (!Array.isArray(contexts)) {
