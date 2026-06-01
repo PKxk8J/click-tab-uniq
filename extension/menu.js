@@ -30,6 +30,10 @@ const {
 
 let rebuildMenuPromise
 let rebuildMenuRequested = false
+let currentContexts = []
+let currentEntries = []
+let renderedMenuItemIds = []
+let rootAction
 
 const MODE_MENU_LABEL_KEYS = {
   [KEY_RESPECT_BOUNDARIES]: KEY_RESPECT_BOUNDARIES_MENU,
@@ -83,6 +87,48 @@ function getMenuEntries (menuItems) {
     map((key) => ({ key, modes: menuItems[key] }))
 }
 
+function getNoGroupId () {
+  return browser.tabGroups?.TAB_GROUP_ID_NONE ?? tabs.TAB_GROUP_ID_NONE ?? -1
+}
+
+function isGroupedTab (tab) {
+  return tab.groupId !== undefined && tab.groupId !== getNoGroupId()
+}
+
+function isContainerTab (tab) {
+  const cookieStoreId = tab.cookieStoreId ?? ''
+  return cookieStoreId !== '' && cookieStoreId !== 'firefox-default'
+}
+
+function isSplitViewTab (tab) {
+  return tab.splitViewId !== undefined &&
+    tab.splitViewId !== (tabs.SPLIT_VIEW_ID_NONE ?? -1)
+}
+
+async function hasBoundaryTabs (windowId) {
+  const tabList = await tabs.query({ windowId })
+  return tabList.some((tab) => {
+    return isGroupedTab(tab) || isContainerTab(tab) || isSplitViewTab(tab)
+  })
+}
+
+function getVisibleEntries (entries, boundaryTabs) {
+  if (boundaryTabs) {
+    return entries
+  }
+
+  return entries.map((entry) => {
+    if (!entry.modes.includes(KEY_RESPECT_BOUNDARIES) ||
+        !entry.modes.includes(KEY_IGNORE_BOUNDARIES)) {
+      return entry
+    }
+    return {
+      key: entry.key,
+      modes: [KEY_RESPECT_BOUNDARIES],
+    }
+  })
+}
+
 function createMenuItem (properties) {
   return new Promise((resolve, reject) => {
     menus.create(properties, () => {
@@ -96,6 +142,43 @@ function createMenuItem (properties) {
   })
 }
 
+async function createRenderedMenuItem (properties) {
+  await createMenuItem(properties)
+  renderedMenuItemIds.push(properties.id)
+}
+
+function updateMenuItem (id, properties) {
+  return new Promise((resolve, reject) => {
+    menus.update(id, properties, () => {
+      if (runtime.lastError) {
+        reject(runtime.lastError)
+      } else {
+        resolve()
+      }
+    })
+  })
+}
+
+function removeMenuItem (id) {
+  return new Promise((resolve, reject) => {
+    menus.remove(id, () => {
+      if (runtime.lastError) {
+        reject(runtime.lastError)
+      } else {
+        resolve()
+      }
+    })
+  })
+}
+
+async function clearRenderedMenuItems () {
+  const ids = [...renderedMenuItemIds].reverse()
+  renderedMenuItemIds = []
+  for (const id of ids) {
+    await removeMenuItem(id).catch(onError)
+  }
+}
+
 async function rebuildMenu () {
   const [storedContexts, storedMenuItems] = await Promise.all([
     getValue(KEY_CONTEXTS),
@@ -105,38 +188,15 @@ async function rebuildMenu () {
   const menuItems = normalizeMenuItems(storedMenuItems)
   const entries = getMenuEntries(menuItems)
 
+  currentContexts = contexts
+  currentEntries = entries
+  renderedMenuItemIds = []
+  rootAction = undefined
+
   await menus.removeAll()
   debug('Clear menu items')
 
   if (contexts.length <= 0 || entries.length <= 0) {
-    return
-  }
-
-  if (entries.length === 1) {
-    const [{ key, modes }] = entries
-    if (modes.length === 1) {
-      const mode = modes[0]
-      await createMenuItem({
-        id: getLeafMenuId(key, mode),
-        title: getUniqByTitle(key, mode),
-        contexts,
-      })
-      return
-    }
-
-    await createMenuItem({
-      id: getKeyMenuId(key),
-      title: i18n.getMessage(KEY_UNIQ_BY, i18n.getMessage(key)),
-      contexts,
-    })
-    for (const mode of modes) {
-      await createMenuItem({
-        id: getLeafMenuId(key, mode),
-        title: getModeMenuTitle(mode),
-        contexts,
-        parentId: getKeyMenuId(key),
-      })
-    }
     return
   }
 
@@ -145,29 +205,67 @@ async function rebuildMenu () {
     title: i18n.getMessage(KEY_UNIQ),
     contexts,
   })
-  for (const { key, modes } of entries) {
+}
+
+async function renderCurrentMenuItems (visibleEntries) {
+  await clearRenderedMenuItems()
+  rootAction = undefined
+
+  if (visibleEntries.length === 1) {
+    const [{ key, modes }] = visibleEntries
     if (modes.length === 1) {
       const mode = modes[0]
-      await createMenuItem({
+      rootAction = { key, mode }
+      await updateMenuItem(KEY_UNIQ, {
+        visible: true,
+        title: getUniqByTitle(key, mode),
+      })
+      return
+    }
+
+    await updateMenuItem(KEY_UNIQ, {
+      visible: true,
+      title: i18n.getMessage(KEY_UNIQ_BY, i18n.getMessage(key)),
+    })
+    for (const mode of modes) {
+      await createRenderedMenuItem({
+        id: getLeafMenuId(key, mode),
+        title: getModeMenuTitle(mode),
+        contexts: currentContexts,
+        parentId: KEY_UNIQ,
+      })
+    }
+    return
+  }
+
+  await updateMenuItem(KEY_UNIQ, {
+    visible: visibleEntries.length > 0,
+    title: i18n.getMessage(KEY_UNIQ),
+  })
+
+  for (const { key, modes } of visibleEntries) {
+    if (modes.length === 1) {
+      const mode = modes[0]
+      await createRenderedMenuItem({
         id: getLeafMenuId(key, mode),
         title: getKeyModeTitle(key, mode),
-        contexts,
+        contexts: currentContexts,
         parentId: KEY_UNIQ,
       })
       continue
     }
 
-    await createMenuItem({
+    await createRenderedMenuItem({
       id: getKeyMenuId(key),
       title: i18n.getMessage(key),
-      contexts,
+      contexts: currentContexts,
       parentId: KEY_UNIQ,
     })
     for (const mode of modes) {
-      await createMenuItem({
+      await createRenderedMenuItem({
         id: getLeafMenuId(key, mode),
         title: getModeMenuTitle(mode),
-        contexts,
+        contexts: currentContexts,
         parentId: getKeyMenuId(key),
       })
     }
@@ -198,7 +296,9 @@ async function getCurrentTab () {
 }
 
 async function handleMenuClick (info, tab) {
-  const entry = parseLeafMenuId(info.menuItemId)
+  const entry = info.menuItemId === KEY_UNIQ
+    ? rootAction
+    : parseLeafMenuId(info.menuItemId)
   if (!entry) {
     return
   }
@@ -213,6 +313,21 @@ async function handleMenuClick (info, tab) {
   )
   await run(targetTab.windowId, entry.key, targetTab.pinned, notification,
     entry.mode)
+}
+
+async function handleMenuShown (info, tab) {
+  const targetTab = tab || await getCurrentTab()
+  if (!targetTab || currentContexts.length <= 0 ||
+      currentEntries.length <= 0) {
+    return
+  }
+
+  const visibleEntries = getVisibleEntries(
+    currentEntries,
+    await hasBoundaryTabs(targetTab.windowId),
+  )
+  await renderCurrentMenuItems(visibleEntries)
+  await menus.refresh()
 }
 
 runtime.onInstalled.addListener(() => {
@@ -235,3 +350,9 @@ storage.onChanged.addListener((changes, areaName) => {
 menus.onClicked.addListener((info, tab) => {
   return handleMenuClick(info, tab).catch(onError)
 })
+
+menus.onShown.addListener((info, tab) => {
+  return handleMenuShown(info, tab).catch(onError)
+})
+
+queueRebuildMenu().catch(onError)
