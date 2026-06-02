@@ -3,7 +3,7 @@
     "message": "ClickTabUniq"
   },
   "description": {
-    "message": "タブ右クリックメニューから重複するタブを閉じます。"
+    "message": "右クリックメニューから重複するタブを閉じます。"
   },
   "uniq": {
     "message": "重複タブ削除"
