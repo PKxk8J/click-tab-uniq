@@ -164,7 +164,7 @@ globalThis.browser = {
 }
 
 resetState({
-  menuItems: { url: ['respectBoundaries', 'ignoreBoundaries'] },
+  menuItems: { url: ['currentHierarchy', 'eachHierarchy', 'allTabs'] },
   tabs: [
     { id: 1, windowId: 1, active: true },
   ],
@@ -191,25 +191,41 @@ function getChildIds (parentId) {
     map(([id]) => id)
 }
 
-test('境界がない場合は守る/無視するメニューを単一項目へ畳む', async () => {
+test('判定キーが1つだけの場合はルートに判定キー名を含める', async () => {
   resetState({
-    menuItems: { url: ['respectBoundaries', 'ignoreBoundaries'] },
+    menuItems: { url: ['currentHierarchy', 'eachHierarchy', 'allTabs'] },
     tabs: [
       { id: 1, windowId: 1, active: true },
-      { id: 2, windowId: 1 },
+      { id: 2, windowId: 1, groupId: 10 },
     ],
   })
   await rebuildMenu()
   await showMenu(1)
 
-  assert.equal(state.menuItems.get('uniq').title, 'uniqBy:url')
-  assert.deepEqual(getChildIds('uniq'), [])
+  assert.equal(state.menuItems.get('uniq').title, 'uniq: url')
+  assert.deepEqual(getChildIds('uniq'), [
+    'scope:url:currentHierarchy',
+    'scope:url:eachHierarchy',
+    'scope:url:allTabs',
+  ])
+  assert.equal(
+    state.menuItems.get('scope:url:currentHierarchy').title,
+    'topLevelScope',
+  )
+  assert.equal(
+    state.menuItems.get('scope:url:eachHierarchy').title,
+    'eachHierarchyMenu',
+  )
+  assert.equal(
+    state.menuItems.get('scope:url:allTabs').title,
+    'allTabsMenu',
+  )
   assert.equal(state.refreshCount, 1)
 })
 
-test('畳んだ単一項目から重複タブを削除できる', async () => {
+test('階層が1つだけの場合は判定範囲の分岐を作らない', async () => {
   resetState({
-    menuItems: { url: ['respectBoundaries', 'ignoreBoundaries'] },
+    menuItems: { url: ['currentHierarchy', 'eachHierarchy', 'allTabs'] },
     tabs: [
       {
         id: 1,
@@ -229,80 +245,272 @@ test('畳んだ単一項目から重複タブを削除できる', async () => {
   })
   await rebuildMenu()
   await showMenu(2)
+
+  assert.equal(state.menuItems.get('uniq').title, 'uniq: url: topLevelScope')
+  assert.deepEqual(getChildIds('uniq'), [])
+
   await clickMenu('uniq', 2)
 
   assert.deepEqual(state.removed, [1])
 })
 
-test('境界がある場合は守る/無視するメニューを表示する', async () => {
+test('グループ内タブではクリックした階層内をグループ内として表示する', async () => {
   resetState({
-    menuItems: { url: ['respectBoundaries', 'ignoreBoundaries'] },
+    menuItems: { url: ['currentHierarchy', 'allTabs'] },
     tabs: [
       { id: 1, windowId: 1, active: true, groupId: 10 },
-      { id: 2, windowId: 1, groupId: 10 },
+      { id: 2, windowId: 1 },
     ],
   })
   await rebuildMenu()
   await showMenu(1)
 
-  assert.equal(state.menuItems.get('uniq').title, 'uniqBy:url')
-  assert.deepEqual(getChildIds('uniq'), [
-    'mode:url:respectBoundaries',
-    'mode:url:ignoreBoundaries',
-  ])
   assert.equal(
-    state.menuItems.get('mode:url:respectBoundaries').title,
-    'respectBoundariesMenu',
-  )
-  assert.equal(
-    state.menuItems.get('mode:url:ignoreBoundaries').title,
-    'ignoreBoundariesMenu',
+    state.menuItems.get('scope:url:currentHierarchy').title,
+    'groupScope',
   )
 })
 
-test('境界がある場合の葉メニューから重複タブを削除できる', async () => {
+test('ピン留めタブではクリックした階層内をピン留めタブ内として表示する', async () => {
   resetState({
-    menuItems: { url: ['respectBoundaries', 'ignoreBoundaries'] },
+    menuItems: { url: ['currentHierarchy', 'allTabs'] },
+    tabs: [
+      { id: 1, windowId: 1, active: true, pinned: true },
+      { id: 2, windowId: 1 },
+    ],
+  })
+  await rebuildMenu()
+  await showMenu(1)
+
+  assert.equal(
+    state.menuItems.get('scope:url:currentHierarchy').title,
+    'pinnedScope',
+  )
+})
+
+test('クリックした階層内では右クリック対象と同じ階層だけを削除する', async () => {
+  resetState({
+    menuItems: { url: ['currentHierarchy'] },
     tabs: [
       {
         id: 1,
         windowId: 1,
         index: 0,
-        active: true,
-        groupId: 10,
+        active: false,
         url: 'https://example.com/duplicate',
       },
       {
         id: 2,
         windowId: 1,
         index: 1,
+        active: false,
+        url: 'https://example.com/duplicate',
+      },
+      {
+        id: 3,
+        windowId: 1,
+        index: 2,
+        active: false,
+        groupId: 10,
+        url: 'https://example.com/duplicate',
+      },
+      {
+        id: 4,
+        windowId: 1,
+        index: 3,
+        active: false,
+        groupId: 10,
+        url: 'https://example.com/duplicate',
+      },
+      {
+        id: 5,
+        windowId: 1,
+        index: 4,
+        active: true,
+        url: 'https://example.com/unique',
+      },
+    ],
+  })
+  await rebuildMenu()
+  await showMenu(1)
+  await clickMenu('uniq', 1)
+
+  assert.deepEqual(state.removed, [2])
+})
+
+test('全ての階層ごとではトップレベル・各グループ・ピン留めを別々に削除する', async () => {
+  resetState({
+    menuItems: { url: ['eachHierarchy'] },
+    tabs: [
+      {
+        id: 1,
+        windowId: 1,
+        index: 0,
+        active: false,
+        url: 'https://example.com/duplicate',
+      },
+      {
+        id: 2,
+        windowId: 1,
+        index: 1,
+        active: false,
+        url: 'https://example.com/duplicate',
+      },
+      {
+        id: 3,
+        windowId: 1,
+        index: 2,
+        active: false,
+        groupId: 10,
+        url: 'https://example.com/duplicate',
+      },
+      {
+        id: 4,
+        windowId: 1,
+        index: 3,
+        active: false,
+        groupId: 10,
+        url: 'https://example.com/duplicate',
+      },
+      {
+        id: 5,
+        windowId: 1,
+        index: 4,
+        active: false,
         groupId: 20,
+        url: 'https://example.com/duplicate',
+      },
+      {
+        id: 6,
+        windowId: 1,
+        index: 5,
+        active: false,
+        pinned: true,
+        url: 'https://example.com/duplicate',
+      },
+      {
+        id: 7,
+        windowId: 1,
+        index: 6,
+        active: false,
+        pinned: true,
+        url: 'https://example.com/duplicate',
+      },
+      {
+        id: 8,
+        windowId: 1,
+        index: 7,
+        active: true,
+        url: 'https://example.com/unique',
+      },
+    ],
+  })
+  await rebuildMenu()
+  await showMenu(1)
+  await clickMenu('uniq', 1)
+
+  assert.deepEqual(state.removed, [2, 4, 7])
+})
+
+test('全てのタブでは階層をまたいで重複タブを削除する', async () => {
+  resetState({
+    menuItems: { url: ['allTabs'] },
+    tabs: [
+      {
+        id: 1,
+        windowId: 1,
+        index: 0,
+        active: false,
+        url: 'https://example.com/duplicate',
+      },
+      {
+        id: 2,
+        windowId: 1,
+        index: 1,
+        active: false,
+        groupId: 10,
+        url: 'https://example.com/duplicate',
+      },
+      {
+        id: 3,
+        windowId: 1,
+        index: 2,
+        active: false,
+        pinned: true,
+        url: 'https://example.com/duplicate',
+      },
+      {
+        id: 4,
+        windowId: 1,
+        index: 3,
+        active: true,
+        url: 'https://example.com/unique',
+      },
+    ],
+  })
+  await rebuildMenu()
+  await showMenu(1)
+  await clickMenu('uniq', 1)
+
+  assert.deepEqual(state.removed, [2, 3])
+})
+
+test('複数の重複判定方法でもスコープが1つならサブメニューを作らない', async () => {
+  resetState({
+    menuItems: {
+      url: ['currentHierarchy'],
+      title: ['currentHierarchy', 'allTabs'],
+    },
+    tabs: [
+      { id: 1, windowId: 1, active: true },
+      { id: 2, windowId: 1, groupId: 10 },
+    ],
+  })
+  await rebuildMenu()
+  await showMenu(1)
+
+  assert.deepEqual(getChildIds('uniq'), ['key:url', 'key:title'])
+  assert.equal(state.menuItems.get('key:url').title, 'url: topLevelScope')
+  assert.equal(state.menuItems.get('key:title').title, 'title')
+  assert.deepEqual(getChildIds('key:url'), [])
+  assert.deepEqual(getChildIds('key:title'), [
+    'scope:title:currentHierarchy',
+    'scope:title:allTabs',
+  ])
+})
+
+test('複数の重複判定方法で畳んだ判定キー項目を直接実行できる', async () => {
+  resetState({
+    menuItems: {
+      url: ['currentHierarchy'],
+      title: ['allTabs'],
+    },
+    tabs: [
+      {
+        id: 1,
+        windowId: 1,
+        index: 0,
+        active: true,
+        url: 'https://example.com/duplicate',
+      },
+      {
+        id: 2,
+        windowId: 1,
+        index: 1,
+        url: 'https://example.com/duplicate',
+      },
+      {
+        id: 3,
+        windowId: 1,
+        index: 2,
+        groupId: 10,
         url: 'https://example.com/duplicate',
       },
     ],
   })
   await rebuildMenu()
   await showMenu(1)
-  await clickMenu('mode:url:ignoreBoundaries', 1)
+  await clickMenu('key:url', 1)
 
   assert.deepEqual(state.removed, [2])
-})
-
-test('表示ごとに境界の有無へ合わせて動的メニューを描き直す', async () => {
-  resetState({
-    menuItems: { url: ['respectBoundaries', 'ignoreBoundaries'] },
-    tabs: [
-      { id: 1, windowId: 1, active: true },
-      { id: 2, windowId: 2, active: true, groupId: 10 },
-    ],
-  })
-  await rebuildMenu()
-  await showMenu(2)
-  await showMenu(1)
-
-  assert.deepEqual(getChildIds('uniq'), [])
-  assert.equal(state.menuItems.has('mode:url:respectBoundaries'), false)
-  assert.equal(state.menuItems.has('mode:url:ignoreBoundaries'), false)
-  assert.equal(state.menuItems.get('uniq').title, 'uniqBy:url')
-  assert.equal(state.refreshCount, 2)
 })

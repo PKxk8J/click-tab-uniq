@@ -6,10 +6,13 @@ Choose how duplicates are detected:
 - URL without hash
 - Title
 
-By default, tabs in different tab groups, containers, and split views are protected so separate browsing contexts are not mixed together.
-If you need a wider cleanup, you can add menu actions that ignore those boundaries.
+For each duplicate detection method, choose the cleanup scope:
 
-The menu stays compact when only one action is enabled, and expands into grouped choices when multiple rules or cleanup modes are enabled.
-Pinned tabs are cleaned up only when you run the command from a pinned tab.
+- The clicked hierarchy
+- Each hierarchy
+- All tabs
+
+Hierarchies are top-level tabs, each tab group, and pinned tabs.
+Split view tabs are included in duplicate detection and cleanup.
 
 Optional notifications can show progress and the final result.

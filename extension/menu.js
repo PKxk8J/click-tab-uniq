@@ -1,18 +1,22 @@
 import {
   ALL_MENU_ITEMS,
-  KEY_IGNORE_BOUNDARIES,
-  KEY_IGNORE_BOUNDARIES_MENU,
-  KEY_RESPECT_BOUNDARIES,
-  KEY_RESPECT_BOUNDARIES_MENU,
+  KEY_ALL_TABS,
+  KEY_ALL_TABS_MENU,
+  KEY_CURRENT_HIERARCHY,
+  KEY_EACH_HIERARCHY,
+  KEY_EACH_HIERARCHY_MENU,
+  KEY_GROUP_SCOPE,
+  KEY_PINNED_SCOPE,
+  KEY_TOP_LEVEL_SCOPE,
   KEY_CONTEXTS,
   KEY_MENU_ITEMS,
   KEY_NOTIFICATION,
   KEY_UNIQ,
-  KEY_UNIQ_BY,
   createQueuedTask,
   debug,
+  getTabHierarchyKey,
   getValue,
-  hasTabBoundary,
+  isGroupedTab,
   normalizeContexts,
   normalizeMenuItems,
   normalizeNotification,
@@ -35,114 +39,134 @@ let currentEntries = []
 let currentMenuActions = new Map()
 let renderedMenuItemIds = []
 
-const MODE_MENU_LABEL_KEYS = {
-  [KEY_RESPECT_BOUNDARIES]: KEY_RESPECT_BOUNDARIES_MENU,
-  [KEY_IGNORE_BOUNDARIES]: KEY_IGNORE_BOUNDARIES_MENU,
+const SCOPE_MENU_LABEL_KEYS = {
+  [KEY_EACH_HIERARCHY]: KEY_EACH_HIERARCHY_MENU,
+  [KEY_ALL_TABS]: KEY_ALL_TABS_MENU,
 }
 
-function getLeafMenuId (key, mode) {
-  return 'mode:' + key + ':' + mode
+function getLeafMenuId (key, scope) {
+  return 'scope:' + key + ':' + scope
 }
 
 function getKeyMenuId (key) {
   return 'key:' + key
 }
 
-function getModeMenuTitle (mode) {
-  return i18n.getMessage(MODE_MENU_LABEL_KEYS[mode])
+function joinMenuTitle (...titles) {
+  return titles.filter(Boolean).join(': ')
 }
 
-function getKeyModeTitle (key, mode) {
-  const title = i18n.getMessage(key)
-  if (mode !== KEY_IGNORE_BOUNDARIES) {
-    return title
+function getCurrentHierarchyMenuTitle (tab) {
+  if (tab.pinned) {
+    return i18n.getMessage(KEY_PINNED_SCOPE)
   }
-  return title + ' (' + getModeMenuTitle(mode) + ')'
+
+  if (isGroupedTab(tab)) {
+    return i18n.getMessage(KEY_GROUP_SCOPE)
+  }
+
+  return i18n.getMessage(KEY_TOP_LEVEL_SCOPE)
 }
 
-function getUniqByTitle (key, mode) {
-  const title = i18n.getMessage(KEY_UNIQ_BY, i18n.getMessage(key))
-  if (mode !== KEY_IGNORE_BOUNDARIES) {
-    return title
+function getScopeMenuTitle (scope, tab) {
+  if (scope === KEY_CURRENT_HIERARCHY) {
+    return getCurrentHierarchyMenuTitle(tab)
   }
-  return title + ' (' + getModeMenuTitle(mode) + ')'
+  return i18n.getMessage(SCOPE_MENU_LABEL_KEYS[scope])
+}
+
+function getUniqKeyTitle (key) {
+  return joinMenuTitle(i18n.getMessage(KEY_UNIQ), i18n.getMessage(key))
+}
+
+function getUniqKeyScopeTitle (key, scope, tab) {
+  return joinMenuTitle(
+    i18n.getMessage(KEY_UNIQ),
+    i18n.getMessage(key),
+    getScopeMenuTitle(scope, tab),
+  )
+}
+
+function getKeyScopeTitle (key, scope, tab) {
+  return joinMenuTitle(i18n.getMessage(key), getScopeMenuTitle(scope, tab))
+}
+
+async function getHierarchyCount (windowId) {
+  const tabList = await tabs.query({ windowId })
+  return new Set(tabList.map(getTabHierarchyKey)).size
 }
 
 function getMenuEntries (menuItems) {
   return ALL_MENU_ITEMS.
     filter((key) => menuItems[key]?.length > 0).
-    map((key) => ({ key, modes: menuItems[key] }))
+    map((key) => ({ key, scopes: menuItems[key] }))
 }
 
-async function hasBoundaryTabs (windowId) {
-  const tabList = await tabs.query({ windowId })
-  return tabList.some(hasTabBoundary)
-}
-
-function getVisibleEntries (entries, boundaryTabs) {
-  if (boundaryTabs) {
-    return entries
+function getEffectiveScopes (scopes, hierarchyCount) {
+  if (hierarchyCount <= 1) {
+    return scopes.slice(0, 1)
   }
-
-  return entries.map((entry) => {
-    if (!entry.modes.includes(KEY_RESPECT_BOUNDARIES) ||
-        !entry.modes.includes(KEY_IGNORE_BOUNDARIES)) {
-      return entry
-    }
-    return {
-      key: entry.key,
-      modes: [KEY_RESPECT_BOUNDARIES],
-    }
-  })
+  return scopes
 }
 
-function createLeafMenuRenderItem (key, mode, title, parentId) {
+function getEffectiveEntries (entries, hierarchyCount) {
+  return entries.map(({ key, scopes }) => ({
+    key,
+    scopes: getEffectiveScopes(scopes, hierarchyCount),
+  }))
+}
+
+function createLeafMenuRenderItem (key, scope, title, parentId) {
   return {
-    action: { key, mode },
-    id: getLeafMenuId(key, mode),
+    action: { key, scope },
+    id: getLeafMenuId(key, scope),
     parentId,
     title,
   }
 }
 
-function createMenuRenderPlan (visibleEntries) {
+function createKeyLeafMenuRenderItem (key, scope, tab) {
+  return {
+    action: { key, scope },
+    id: getKeyMenuId(key),
+    parentId: KEY_UNIQ,
+    title: getKeyScopeTitle(key, scope, tab),
+  }
+}
+
+function createMenuRenderPlan (visibleEntries, tab, hierarchyCount) {
+  const effectiveEntries = getEffectiveEntries(visibleEntries, hierarchyCount)
   const actions = new Map()
   const items = []
   const root = {
     title: i18n.getMessage(KEY_UNIQ),
-    visible: visibleEntries.length > 0,
+    visible: effectiveEntries.length > 0,
   }
 
-  if (visibleEntries.length === 1) {
-    const [{ key, modes }] = visibleEntries
-    if (modes.length === 1) {
-      const mode = modes[0]
-      root.title = getUniqByTitle(key, mode)
-      actions.set(KEY_UNIQ, { key, mode })
+  if (effectiveEntries.length === 1) {
+    const [{ key, scopes }] = effectiveEntries
+    if (scopes.length === 1) {
+      const scope = scopes[0]
+      root.title = getUniqKeyScopeTitle(key, scope, tab)
+      actions.set(KEY_UNIQ, { key, scope })
       return { actions, items, root }
     }
 
-    root.title = i18n.getMessage(KEY_UNIQ_BY, i18n.getMessage(key))
-    for (const mode of modes) {
+    root.title = getUniqKeyTitle(key)
+    for (const scope of scopes) {
       items.push(createLeafMenuRenderItem(
         key,
-        mode,
-        getModeMenuTitle(mode),
+        scope,
+        getScopeMenuTitle(scope, tab),
         KEY_UNIQ,
       ))
     }
     return { actions, items, root }
   }
 
-  for (const { key, modes } of visibleEntries) {
-    if (modes.length === 1) {
-      const mode = modes[0]
-      items.push(createLeafMenuRenderItem(
-        key,
-        mode,
-        getKeyModeTitle(key, mode),
-        KEY_UNIQ,
-      ))
+  for (const { key, scopes } of effectiveEntries) {
+    if (scopes.length === 1) {
+      items.push(createKeyLeafMenuRenderItem(key, scopes[0], tab))
       continue
     }
 
@@ -152,11 +176,11 @@ function createMenuRenderPlan (visibleEntries) {
       parentId: KEY_UNIQ,
       title: i18n.getMessage(key),
     })
-    for (const mode of modes) {
+    for (const scope of scopes) {
       items.push(createLeafMenuRenderItem(
         key,
-        mode,
-        getModeMenuTitle(mode),
+        scope,
+        getScopeMenuTitle(scope, tab),
         parentId,
       ))
     }
@@ -243,8 +267,8 @@ async function rebuildMenu () {
   })
 }
 
-async function renderCurrentMenuItems (visibleEntries) {
-  const renderPlan = createMenuRenderPlan(visibleEntries)
+async function renderCurrentMenuItems (visibleEntries, tab, hierarchyCount) {
+  const renderPlan = createMenuRenderPlan(visibleEntries, tab, hierarchyCount)
 
   await clearRenderedMenuItems()
   currentMenuActions = renderPlan.actions
@@ -288,7 +312,7 @@ async function handleMenuClick (info, tab) {
     await getValue(KEY_NOTIFICATION),
   )
   await run(targetTab.windowId, entry.key, targetTab.pinned, notification,
-    entry.mode)
+    entry.scope, targetTab)
 }
 
 async function handleMenuShown (info, tab) {
@@ -298,11 +322,8 @@ async function handleMenuShown (info, tab) {
     return
   }
 
-  const visibleEntries = getVisibleEntries(
-    currentEntries,
-    await hasBoundaryTabs(targetTab.windowId),
-  )
-  await renderCurrentMenuItems(visibleEntries)
+  await renderCurrentMenuItems(currentEntries, targetTab,
+    await getHierarchyCount(targetTab.windowId))
   await menus.refresh()
 }
 

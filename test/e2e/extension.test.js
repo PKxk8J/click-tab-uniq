@@ -61,7 +61,7 @@ async function waitForOptionsPage () {
   await driver.wait(async () => {
     return await driver.executeScript(`
       return document.getElementById('label_name')?.textContent === 'ClickTabUniq' &&
-        Boolean(document.getElementById('menuItems_url_respectBoundaries')) &&
+        Boolean(document.getElementById('menuItems_url_eachHierarchy')) &&
         Boolean(document.getElementById('notification'))
     `)
   }, WAIT_MS)
@@ -152,25 +152,26 @@ describe('Firefox extension E2E', () => {
 
     assert.equal(await isChecked('tab'), true)
     assert.equal(await isChecked('all'), false)
-    assert.equal(await isChecked('menuItems_url_respectBoundaries'), true)
-    assert.equal(await isChecked('menuItems_url_ignoreBoundaries'), false)
-    assert.equal(await isChecked('menuItems_urlWithoutHash_respectBoundaries'),
+    assert.equal(await isChecked('menuItems_url_currentHierarchy'), false)
+    assert.equal(await isChecked('menuItems_url_eachHierarchy'), true)
+    assert.equal(await isChecked('menuItems_url_allTabs'), false)
+    assert.equal(await isChecked('menuItems_urlWithoutHash_currentHierarchy'),
       false)
-    assert.equal(await isChecked('menuItems_title_respectBoundaries'), true)
+    assert.equal(await isChecked('menuItems_title_eachHierarchy'), true)
     assert.equal(await isChecked('notification'), false)
 
     await setCheckboxValue('all', true)
-    await setCheckboxValue('menuItems_url_ignoreBoundaries', true)
-    await setCheckboxValue('menuItems_urlWithoutHash_respectBoundaries', true)
-    await setCheckboxValue('menuItems_title_respectBoundaries', false)
+    await setCheckboxValue('menuItems_url_allTabs', true)
+    await setCheckboxValue('menuItems_urlWithoutHash_currentHierarchy', true)
+    await setCheckboxValue('menuItems_title_eachHierarchy', false)
 
     await waitForStorageData((data) => {
       return data.contexts?.includes('tab') &&
         data.contexts?.includes('all') &&
-        data.menuItems?.url?.includes('respectBoundaries') &&
-        data.menuItems?.url?.includes('ignoreBoundaries') &&
-        data.menuItems?.urlWithoutHash?.includes('respectBoundaries') &&
-        !data.menuItems?.title?.includes('respectBoundaries') &&
+        data.menuItems?.url?.includes('eachHierarchy') &&
+        data.menuItems?.url?.includes('allTabs') &&
+        data.menuItems?.urlWithoutHash?.includes('currentHierarchy') &&
+        !data.menuItems?.title?.includes('eachHierarchy') &&
         data.notification === false
     }, 'options page settings were not saved')
 
@@ -179,11 +180,11 @@ describe('Firefox extension E2E', () => {
 
     assert.equal(await isChecked('tab'), true)
     assert.equal(await isChecked('all'), true)
-    assert.equal(await isChecked('menuItems_url_respectBoundaries'), true)
-    assert.equal(await isChecked('menuItems_url_ignoreBoundaries'), true)
-    assert.equal(await isChecked('menuItems_urlWithoutHash_respectBoundaries'),
+    assert.equal(await isChecked('menuItems_url_eachHierarchy'), true)
+    assert.equal(await isChecked('menuItems_url_allTabs'), true)
+    assert.equal(await isChecked('menuItems_urlWithoutHash_currentHierarchy'),
       true)
-    assert.equal(await isChecked('menuItems_title_respectBoundaries'), false)
+    assert.equal(await isChecked('menuItems_title_eachHierarchy'), false)
     assert.equal(await isChecked('notification'), false)
   })
 
