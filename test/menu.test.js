@@ -588,7 +588,8 @@ test('全てのタブでは階層をまたいで重複タブを削除する', as
   await showMenu(1)
   await clickMenu('uniq:action', 1)
 
-  assert.deepEqual(state.removed, [2, 3])
+  assert.deepEqual(state.removed, [2, 1])
+  assert.ok(state.tabs.find((tab) => tab.id === 3))
 })
 
 test('複数の重複判定方法でもスコープが1つならサブメニューを作らない', async () => {

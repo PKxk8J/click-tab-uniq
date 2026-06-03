@@ -79,6 +79,14 @@ function getTabKey (tab, keyGetter, scope) {
   ])
 }
 
+function shouldPreferSurvivor (candidateTab, survivorTab, scope) {
+  return scope === KEY_ALL_TABS && candidateTab.pinned && !survivorTab.pinned
+}
+
+function shouldKeepActiveDuplicate (activeTab, survivorTab, scope) {
+  return !(scope === KEY_ALL_TABS && survivorTab.pinned && !activeTab.pinned)
+}
+
 async function activateBest (windowId, excludedIds) {
   const removeIdSet = new Set(excludedIds)
   const tabList = await tabs.query({ windowId })
@@ -150,6 +158,13 @@ function createDuplicatePlan (tabList, keyGetter, scope) {
       continue
     }
 
+    const survivorTab = idToEntry.get(plan.survivorId).tab
+    if (shouldPreferSurvivor(tab, survivorTab, scope)) {
+      removeIds.push(plan.survivorId)
+      plan.survivorId = tab.id
+      continue
+    }
+
     removeIds.push(tab.id)
   }
 
@@ -161,7 +176,7 @@ function createDuplicatePlan (tabList, keyGetter, scope) {
 }
 
 async function keepActiveDuplicateIfPossible (windowId, target, plan,
-  removeIdSet) {
+  removeIdSet, scope) {
   const activeTabId = await getActiveTabId(windowId)
   const targetIndex = target.indexOf(activeTabId)
   if (targetIndex < 0) {
@@ -172,6 +187,11 @@ async function keepActiveDuplicateIfPossible (windowId, target, plan,
   const duplicatePlan = activeEntry && plan.keyToPlan.get(activeEntry.key)
   const rival = plan.idToEntry.get(duplicatePlan?.survivorId)?.tab
   if (!activeEntry || !rival) {
+    await activateBest(windowId, removeIdSet)
+    return
+  }
+
+  if (!shouldKeepActiveDuplicate(activeEntry.tab, rival, scope)) {
     await activateBest(windowId, removeIdSet)
     return
   }
@@ -212,7 +232,8 @@ async function closeDuplicateTabs (windowId, keyGetter, scope, sourceTab,
   const removeIdSet = new Set(removeIds)
   for (let i = removeIds.length; i > 0; i -= BULK_SIZE) {
     const target = removeIds.slice(Math.max(0, i - BULK_SIZE), i)
-    await keepActiveDuplicateIfPossible(windowId, target, plan, removeIdSet)
+    await keepActiveDuplicateIfPossible(windowId, target, plan, removeIdSet,
+      scope)
 
     await tabs.remove(target)
     debug('Tabs' + target + ' were closed')
