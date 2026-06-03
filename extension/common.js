@@ -1,6 +1,7 @@
 const {
   i18n,
   storage,
+  tabs,
 } = browser
 
 export const KEY_DEBUG = 'debug'
@@ -14,13 +15,20 @@ export const KEY_URL_WITHOUT_HASH = 'urlWithoutHash'
 export const KEY_TITLE = 'title'
 export const KEY_RESPECT_BOUNDARIES = 'respectBoundaries'
 export const KEY_IGNORE_BOUNDARIES = 'ignoreBoundaries'
-export const KEY_RESPECT_BOUNDARIES_MENU = 'respectBoundariesMenu'
-export const KEY_IGNORE_BOUNDARIES_MENU = 'ignoreBoundariesMenu'
+export const KEY_CURRENT_HIERARCHY = 'currentHierarchy'
+export const KEY_TOP_LEVEL_HIERARCHY = 'topLevelHierarchy'
+export const KEY_EACH_HIERARCHY = 'eachHierarchy'
+export const KEY_ALL_TABS = 'allTabs'
+export const KEY_TOP_LEVEL_SCOPE = 'topLevelScope'
+export const KEY_GROUP_SCOPE = 'groupScope'
+export const KEY_EACH_HIERARCHY_MENU = 'eachHierarchyMenu'
+export const KEY_ALL_TABS_MENU = 'allTabsMenu'
 
 export const KEY_UNIQ = 'uniq'
 export const KEY_UNIQ_BY = 'uniqBy'
 export const KEY_CONTEXTS = 'contexts'
 export const KEY_MENU_ITEMS = 'menuItems'
+export const KEY_HIERARCHY_DESCRIPTION = 'hierarchyDescription'
 export const KEY_NOTIFICATION = 'notification'
 export const KEY_FEEDBACK = 'feedback'
 export const KEY_SETTINGS = 'settings'
@@ -35,10 +43,18 @@ export const KEY_FAILURE_MESSAGE = 'failureMessage'
 export const ALL_CONTEXTS = [KEY_TAB, KEY_ALL]
 export const DEFAULT_CONTEXTS = [KEY_TAB]
 export const ALL_MENU_ITEMS = [KEY_URL, KEY_URL_WITHOUT_HASH, KEY_TITLE]
-export const ALL_MENU_MODES = [KEY_RESPECT_BOUNDARIES, KEY_IGNORE_BOUNDARIES]
+export const ALL_DUPLICATE_SCOPES = [
+  KEY_CURRENT_HIERARCHY,
+  KEY_EACH_HIERARCHY,
+  KEY_ALL_TABS,
+]
+export const LEGACY_MENU_MODE_TO_SCOPE = {
+  [KEY_RESPECT_BOUNDARIES]: KEY_EACH_HIERARCHY,
+  [KEY_IGNORE_BOUNDARIES]: KEY_ALL_TABS,
+}
 export const DEFAULT_MENU_ITEMS = {
-  [KEY_URL]: [KEY_RESPECT_BOUNDARIES],
-  [KEY_TITLE]: [KEY_RESPECT_BOUNDARIES],
+  [KEY_URL]: [KEY_EACH_HIERARCHY],
+  [KEY_TITLE]: [KEY_EACH_HIERARCHY],
 }
 export const DEFAULT_NOTIFICATION = false
 
@@ -62,10 +78,6 @@ export function onError (error) {
   console.error(error)
 }
 
-export async function asleep (msec) {
-  return new Promise(resolve => setTimeout(resolve, msec))
-}
-
 export async function getValue (key, defaultValue) {
   const {
     [key]: value = defaultValue,
@@ -73,13 +85,83 @@ export async function getValue (key, defaultValue) {
   return value
 }
 
-export function cloneContexts (contexts) {
-  return [...contexts]
+export function createQueuedTask (task, { onSuccess, onFailure = onError } = {}) {
+  let promise
+  let requested = false
+
+  const run = async () => {
+    try {
+      while (requested) {
+        requested = false
+        await task()
+      }
+      onSuccess?.()
+    } catch (error) {
+      onFailure(error)
+    } finally {
+      promise = undefined
+      if (requested) {
+        queue()
+      }
+    }
+  }
+
+  function queue () {
+    requested = true
+    if (!promise) {
+      promise = run()
+    }
+    return promise
+  }
+
+  return queue
+}
+
+export function getNoGroupId () {
+  return browser.tabGroups?.TAB_GROUP_ID_NONE ?? tabs.TAB_GROUP_ID_NONE ?? -1
+}
+
+export function getTabGroupId (tab) {
+  return tab.groupId ?? getNoGroupId()
+}
+
+export function getTabContainerId (tab) {
+  return tab.cookieStoreId ?? ''
+}
+
+export function isGroupedTab (tab) {
+  return tab.groupId !== undefined && tab.groupId !== getNoGroupId()
+}
+
+export function getTabHierarchy (tab) {
+  if (!tab.pinned && isGroupedTab(tab)) {
+    return ['group', getTabGroupId(tab)]
+  }
+
+  return ['topLevel']
+}
+
+export function getTabHierarchyKey (tab) {
+  return JSON.stringify(getTabHierarchy(tab))
+}
+
+export function isContainerTab (tab) {
+  const cookieStoreId = getTabContainerId(tab)
+  return cookieStoreId !== '' && cookieStoreId !== 'firefox-default'
+}
+
+export function isSplitViewTab (tab) {
+  return tab.splitViewId !== undefined &&
+    tab.splitViewId !== (tabs.SPLIT_VIEW_ID_NONE ?? -1)
+}
+
+export function hasTabBoundary (tab) {
+  return isGroupedTab(tab) || isContainerTab(tab) || isSplitViewTab(tab)
 }
 
 export function normalizeContexts (contexts) {
   if (contexts === undefined) {
-    return cloneContexts(DEFAULT_CONTEXTS)
+    return [...DEFAULT_CONTEXTS]
   }
 
   if (!Array.isArray(contexts)) {
@@ -92,9 +174,9 @@ export function normalizeContexts (contexts) {
 export function cloneMenuItems (menuItems) {
   const normalized = {}
   for (const key of ALL_MENU_ITEMS) {
-    const modes = menuItems[key]
-    if (Array.isArray(modes) && modes.length > 0) {
-      normalized[key] = [...modes]
+    const scopes = menuItems[key]
+    if (Array.isArray(scopes) && scopes.length > 0) {
+      normalized[key] = [...scopes]
     }
   }
   return normalized
@@ -117,7 +199,7 @@ export function normalizeMenuItems (menuItems) {
     const normalized = {}
     for (const key of ALL_MENU_ITEMS) {
       if (menuItems.includes(key)) {
-        normalized[key] = [KEY_RESPECT_BOUNDARIES]
+        normalized[key] = [KEY_EACH_HIERARCHY]
       }
     }
     return normalized
@@ -129,15 +211,21 @@ export function normalizeMenuItems (menuItems) {
 
   const normalized = {}
   for (const key of ALL_MENU_ITEMS) {
-    const modes = menuItems[key]
-    if (!Array.isArray(modes)) {
+    const scopes = menuItems[key]
+    if (!Array.isArray(scopes)) {
       continue
     }
 
-    const normalizedModes = ALL_MENU_MODES.
-      filter((mode) => modes.includes(mode))
-    if (normalizedModes.length > 0) {
-      normalized[key] = normalizedModes
+    const normalizedScopes = []
+    for (const scope of scopes) {
+      const normalizedScope = LEGACY_MENU_MODE_TO_SCOPE[scope] || scope
+      if (ALL_DUPLICATE_SCOPES.includes(normalizedScope) &&
+          !normalizedScopes.includes(normalizedScope)) {
+        normalizedScopes.push(normalizedScope)
+      }
+    }
+    if (normalizedScopes.length > 0) {
+      normalized[key] = normalizedScopes
     }
   }
   return normalized

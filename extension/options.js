@@ -1,9 +1,10 @@
 import {
   ALL_CONTEXTS,
+  ALL_DUPLICATE_SCOPES,
   ALL_MENU_ITEMS,
-  ALL_MENU_MODES,
   KEY_CONTEXTS,
   KEY_FEEDBACK,
+  KEY_HIERARCHY_DESCRIPTION,
   KEY_MENU_ITEMS,
   KEY_NAME,
   KEY_NOTIFICATION,
@@ -12,6 +13,7 @@ import {
   KEY_SAVE_STATUS_SAVING,
   KEY_SETTINGS,
   NOTIFICATION_PERMISSION,
+  createQueuedTask,
   debug,
   normalizeContexts,
   normalizeMenuItems,
@@ -27,12 +29,10 @@ const {
 
 const SAVE_STATUS_CLEAR_DELAY = 1800
 
-let savePromise
-let saveRequested = false
 let saveStatusVersion = 0
 
-function getMenuModeInputId (key, mode) {
-  return KEY_MENU_ITEMS + '_' + key + '_' + mode
+function getMenuScopeInputId (key, scope) {
+  return KEY_MENU_ITEMS + '_' + key + '_' + scope
 }
 
 function setLabelText (id, key) {
@@ -73,10 +73,10 @@ async function restore () {
   })
 
   ALL_MENU_ITEMS.forEach((key) => {
-    const modeSet = new Set(menuItems[key] || [])
-    ALL_MENU_MODES.forEach((mode) => {
-      document.getElementById(getMenuModeInputId(key, mode)).checked =
-        modeSet.has(mode)
+    const scopeSet = new Set(menuItems[key] || [])
+    ALL_DUPLICATE_SCOPES.forEach((scope) => {
+      document.getElementById(getMenuScopeInputId(key, scope)).checked =
+        scopeSet.has(scope)
     })
   })
 
@@ -103,14 +103,14 @@ async function save () {
 
   const menuItems = {}
   ALL_MENU_ITEMS.forEach((key) => {
-    const modes = []
-    ALL_MENU_MODES.forEach((mode) => {
-      if (document.getElementById(getMenuModeInputId(key, mode)).checked) {
-        modes.push(mode)
+    const scopes = []
+    ALL_DUPLICATE_SCOPES.forEach((scope) => {
+      if (document.getElementById(getMenuScopeInputId(key, scope)).checked) {
+        scopes.push(scope)
       }
     })
-    if (modes.length > 0) {
-      menuItems[key] = modes
+    if (scopes.length > 0) {
+      menuItems[key] = scopes
     }
   })
 
@@ -130,31 +130,19 @@ async function save () {
   debug('Saved ' + JSON.stringify(data))
 }
 
-function queueSave () {
-  saveRequested = true
-  setSaveStatus(KEY_SAVE_STATUS_SAVING, 'saving')
-
-  if (!savePromise) {
-    savePromise = runSaveQueue()
-  }
-}
-
-async function runSaveQueue () {
-  try {
-    while (saveRequested) {
-      saveRequested = false
-      await save()
-    }
+const runQueuedSave = createQueuedTask(save, {
+  onSuccess: () => {
     setSaveStatus(KEY_SAVE_STATUS_SAVED, 'saved', true)
-  } catch (error) {
+  },
+  onFailure: (error) => {
     setSaveStatus(KEY_SAVE_STATUS_FAILED, 'error')
     onError(error)
-  } finally {
-    savePromise = undefined
-    if (saveRequested) {
-      queueSave()
-    }
-  }
+  },
+})
+
+function queueSave () {
+  setSaveStatus(KEY_SAVE_STATUS_SAVING, 'saving')
+  runQueuedSave()
 }
 
 function createSwitch (inputId) {
@@ -196,7 +184,7 @@ function addCheckboxEntry (key, container, inputId = key) {
   container.appendChild(createToggleLabel(key, inputId))
 }
 
-function addModeEntry (key, container, inputId) {
+function addScopeEntry (key, container, inputId) {
   container.appendChild(createToggleLabel(key, inputId, 'mode-row'))
 }
 
@@ -206,8 +194,8 @@ function addMenuItemEntry (key, container) {
 
   const modeList = document.createElement('div')
   modeList.className = 'mode-list'
-  ALL_MENU_MODES.forEach((mode) => {
-    addModeEntry(mode, modeList, getMenuModeInputId(key, mode))
+  ALL_DUPLICATE_SCOPES.forEach((scope) => {
+    addScopeEntry(scope, modeList, getMenuScopeInputId(key, scope))
   })
 
   const item = document.createElement('article')
@@ -253,6 +241,8 @@ async function init () {
   setLabelText('label_' + KEY_SETTINGS, KEY_SETTINGS)
   setLabelText('label_' + KEY_CONTEXTS, KEY_CONTEXTS)
   setLabelText('label_' + KEY_MENU_ITEMS, KEY_MENU_ITEMS)
+  setLabelText('label_' + KEY_HIERARCHY_DESCRIPTION,
+    KEY_HIERARCHY_DESCRIPTION)
   setLabelText('label_' + KEY_FEEDBACK, KEY_FEEDBACK)
 
   await restore()

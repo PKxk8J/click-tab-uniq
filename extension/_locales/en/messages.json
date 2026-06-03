@@ -13,7 +13,7 @@
     "message": "Close Duplicate Tabs"
   },
   "uniqBy": {
-    "message": "Close Duplicate Tabs in $1"
+    "message": "Close Duplicate Tabs by $1"
   },
   "url": {
     "message": "URL"
@@ -36,11 +36,35 @@
   "ignoreBoundariesMenu": {
     "message": "Ignore boundaries"
   },
+  "currentHierarchy": {
+    "message": "Detect within the clicked hierarchy"
+  },
+  "eachHierarchy": {
+    "message": "Detect separately for each hierarchy"
+  },
+  "allTabs": {
+    "message": "Detect across all tabs"
+  },
+  "hierarchyDescription": {
+    "message": "Hierarchy types: top-level and groups"
+  },
+  "topLevelScope": {
+    "message": "Top Level"
+  },
+  "groupScope": {
+    "message": "In Group"
+  },
+  "eachHierarchyMenu": {
+    "message": "Top Level and Each Group"
+  },
+  "allTabsMenu": {
+    "message": "All Tabs"
+  },
   "notification": {
     "message": "Notification"
   },
   "menuItems": {
-    "message": "Menu Items"
+    "message": "Duplicate Detection"
   },
   "settings": {
     "message": "Settings"

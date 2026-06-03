@@ -1,6 +1,9 @@
 import {
-  ALL_MENU_MODES,
+  ALL_DUPLICATE_SCOPES,
   BULK_SIZE,
+  KEY_ALL_TABS,
+  KEY_CURRENT_HIERARCHY,
+  KEY_EACH_HIERARCHY,
   KEY_IGNORE_BOUNDARIES,
   KEY_CLOSING,
   KEY_FAILURE_MESSAGE,
@@ -8,18 +11,22 @@ import {
   KEY_RESPECT_BOUNDARIES,
   KEY_SUCCESS_MESSAGE,
   KEY_TITLE,
+  KEY_TOP_LEVEL_HIERARCHY,
   KEY_URL,
   KEY_URL_WITHOUT_HASH,
   NOTIFICATION_PERMISSION,
   NOTIFICATION_ID,
   NOTIFICATION_INTERVAL,
   debug,
+  getTabGroupId,
+  getTabHierarchy,
+  getTabHierarchyKey,
+  isGroupedTab,
   onError,
 } from './common.js'
 
 const {
   i18n,
-  notifications,
   permissions,
   tabs,
 } = browser
@@ -30,29 +37,54 @@ const KEY_GETTERS = {
   [KEY_TITLE]: (tab) => tab.title,
 }
 
-function isSplitViewTab (tab) {
-  return tab.splitViewId !== undefined &&
-    tab.splitViewId !== (tabs.SPLIT_VIEW_ID_NONE ?? -1)
+const LEGACY_SCOPE_MAP = {
+  [KEY_RESPECT_BOUNDARIES]: KEY_EACH_HIERARCHY,
+  [KEY_IGNORE_BOUNDARIES]: KEY_ALL_TABS,
 }
 
-function canRemoveTab (tab, closePinned, respectBoundaries) {
-  if (respectBoundaries && isSplitViewTab(tab)) {
-    return false
+function normalizeScope (scope) {
+  return LEGACY_SCOPE_MAP[scope] || scope
+}
+
+function isSameHierarchy (tab, targetTab) {
+  return getTabHierarchyKey(tab) === getTabHierarchyKey(targetTab)
+}
+
+function isSameGroup (tab, targetTab) {
+  return isGroupedTab(tab) && isGroupedTab(targetTab) &&
+    getTabGroupId(tab) === getTabGroupId(targetTab)
+}
+
+function isTopLevelHierarchyTab (tab, sourceTab) {
+  if (tab.pinned) {
+    return true
   }
-  return closePinned || !tab.pinned
+
+  if (isGroupedTab(tab)) {
+    return !sourceTab.pinned && isSameGroup(tab, sourceTab)
+  }
+
+  return true
 }
 
-function getTabKey (tab, keyGetter, respectBoundaries) {
+function getTabKey (tab, keyGetter, scope) {
   const key = keyGetter(tab)
-  if (!respectBoundaries) {
+  if (scope !== KEY_EACH_HIERARCHY) {
     return JSON.stringify([key])
   }
 
   return JSON.stringify([
     key,
-    tab.cookieStoreId ?? '',
-    tab.groupId ?? (tabs.TAB_GROUP_ID_NONE ?? -1),
+    ...getTabHierarchy(tab),
   ])
+}
+
+function shouldPreferSurvivor (candidateTab, survivorTab) {
+  return candidateTab.pinned && !survivorTab.pinned
+}
+
+function shouldKeepActiveDuplicate (activeTab, survivorTab) {
+  return !(survivorTab.pinned && !activeTab.pinned)
 }
 
 async function activateBest (windowId, excludedIds) {
@@ -109,74 +141,98 @@ async function getActiveTabId (windowId) {
   return activeTab && activeTab.id
 }
 
-async function closeDuplicateTabs (windowId, keyGetter, closePinned,
-  respectBoundaries, progress) {
-  const tabList = await tabs.query({ windowId })
-  progress.all = tabList.length
-
+function createDuplicatePlan (tabList, keyGetter, scope) {
   const idToEntry = new Map()
-  const keyToSurviveId = new Map()
+  const keyToPlan = new Map()
   const removeIds = []
+
   for (const tab of tabList) {
-    const key = getTabKey(tab, keyGetter, respectBoundaries)
+    const key = getTabKey(tab, keyGetter, scope)
+    const entry = { tab, key }
+    let plan = keyToPlan.get(key)
 
-    idToEntry.set(tab.id, { tab, key })
-    if (!keyToSurviveId.has(key)) {
-      keyToSurviveId.set(key, tab.id)
+    idToEntry.set(tab.id, entry)
+    if (!plan) {
+      plan = { key, survivorId: tab.id }
+      keyToPlan.set(key, plan)
       continue
     }
 
-    const rival = idToEntry.get(keyToSurviveId.get(key)).tab
-    const canRemoveTabCurrent = canRemoveTab(tab, closePinned,
-      respectBoundaries)
-    const canRemoveTabRival = canRemoveTab(rival, closePinned,
-      respectBoundaries)
-
-    if (!canRemoveTabCurrent) {
-      if (canRemoveTabRival) {
-        keyToSurviveId.set(key, tab.id)
-        removeIds.push(rival.id)
-      }
-      continue
-    }
-
-    if (!canRemoveTabRival) {
-      removeIds.push(tab.id)
+    const survivorTab = idToEntry.get(plan.survivorId).tab
+    if (shouldPreferSurvivor(tab, survivorTab)) {
+      removeIds.push(plan.survivorId)
+      plan.survivorId = tab.id
       continue
     }
 
     removeIds.push(tab.id)
   }
 
+  return {
+    idToEntry,
+    keyToPlan,
+    removeIds,
+  }
+}
+
+async function keepActiveDuplicateIfPossible (windowId, target, plan,
+  removeIdSet) {
+  const activeTabId = await getActiveTabId(windowId)
+  const targetIndex = target.indexOf(activeTabId)
+  if (targetIndex < 0) {
+    return
+  }
+
+  const activeEntry = plan.idToEntry.get(activeTabId)
+  const duplicatePlan = activeEntry && plan.keyToPlan.get(activeEntry.key)
+  const rival = plan.idToEntry.get(duplicatePlan?.survivorId)?.tab
+  if (!activeEntry || !rival) {
+    await activateBest(windowId, removeIdSet)
+    return
+  }
+
+  if (!shouldKeepActiveDuplicate(activeEntry.tab, rival)) {
+    await activateBest(windowId, removeIdSet)
+    return
+  }
+
+  duplicatePlan.survivorId = activeTabId
+  target[targetIndex] = rival.id
+  removeIdSet.delete(activeTabId)
+  removeIdSet.add(rival.id)
+}
+
+function filterTabsByScope (tabList, scope, sourceTab) {
+  if (scope !== KEY_CURRENT_HIERARCHY &&
+      scope !== KEY_TOP_LEVEL_HIERARCHY) {
+    return tabList
+  }
+
+  if (!sourceTab) {
+    throw new Error('sourceTab is required for hierarchy scope')
+  }
+
+  if (scope === KEY_TOP_LEVEL_HIERARCHY) {
+    return tabList.filter((tab) => isTopLevelHierarchyTab(tab, sourceTab))
+  }
+
+  return tabList.filter((tab) => isSameHierarchy(tab, sourceTab))
+}
+
+async function closeDuplicateTabs (windowId, keyGetter, scope, sourceTab,
+  progress) {
+  const allTabs = await tabs.query({ windowId })
+  const tabList = filterTabsByScope(allTabs, scope, sourceTab)
+  progress.all = tabList.length
+
+  const plan = createDuplicatePlan(tabList, keyGetter, scope)
+  const { removeIds } = plan
+
   progress.target = removeIds.length
   const removeIdSet = new Set(removeIds)
   for (let i = removeIds.length; i > 0; i -= BULK_SIZE) {
     const target = removeIds.slice(Math.max(0, i - BULK_SIZE), i)
-    const activeTabId = await getActiveTabId(windowId)
-
-    for (let j = 0; j < target.length; j++) {
-      const id = target[j]
-      if (id !== activeTabId) {
-        continue
-      }
-
-      const entry = idToEntry.get(id)
-      const rival = idToEntry.get(keyToSurviveId.get(entry.key))?.tab
-      if (!rival) {
-        break
-      }
-
-      if (canRemoveTab(rival, closePinned, respectBoundaries)) {
-        keyToSurviveId.set(entry.key, id)
-        target[j] = rival.id
-        removeIdSet.delete(id)
-        removeIdSet.add(rival.id)
-        break
-      }
-
-      await activateBest(entry.tab.windowId, removeIdSet)
-      break
-    }
+    await keepActiveDuplicateIfPossible(windowId, target, plan, removeIdSet)
 
     await tabs.remove(target)
     debug('Tabs' + target + ' were closed')
@@ -232,7 +288,7 @@ function getNotificationOptions (progress) {
 
 async function notify (progress) {
   const options = getNotificationOptions(progress)
-  await notifications.create(NOTIFICATION_ID, options)
+  await browser.notifications.create(NOTIFICATION_ID, options)
 }
 
 async function tryNotify (progress) {
@@ -245,8 +301,8 @@ async function tryNotify (progress) {
   }
 }
 
-export async function run (windowId, keyType, closePinned, notification,
-  mode = KEY_RESPECT_BOUNDARIES) {
+export async function run (windowId, keyType, notification,
+  scope = KEY_EACH_HIERARCHY, sourceTab) {
   const progress = {
     done: 0,
   }
@@ -254,7 +310,7 @@ export async function run (windowId, keyType, closePinned, notification,
   let stopProgressNotification
   try {
     notifyEnabled = notification &&
-      typeof notifications?.create === 'function' &&
+      typeof browser.notifications?.create === 'function' &&
       await permissions.contains(NOTIFICATION_PERMISSION)
     if (notifyEnabled) {
       progress.start = new Date()
@@ -265,13 +321,15 @@ export async function run (windowId, keyType, closePinned, notification,
     if (!keyGetter) {
       throw new Error('Unsupported keyType: ' + keyType)
     }
-    if (!ALL_MENU_MODES.includes(mode)) {
-      throw new Error('Unsupported mode: ' + mode)
+
+    const normalizedScope = normalizeScope(scope)
+    if (!ALL_DUPLICATE_SCOPES.includes(normalizedScope) &&
+        normalizedScope !== KEY_TOP_LEVEL_HIERARCHY) {
+      throw new Error('Unsupported scope: ' + scope)
     }
 
-    const respectBoundaries = mode !== KEY_IGNORE_BOUNDARIES
-    await closeDuplicateTabs(windowId, keyGetter, closePinned,
-      respectBoundaries, progress)
+    await closeDuplicateTabs(windowId, keyGetter, normalizedScope, sourceTab,
+      progress)
     debug('Finished')
 
     if (notifyEnabled) {

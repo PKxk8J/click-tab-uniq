@@ -3,13 +3,13 @@
     "message": "ClickTabUniq"
   },
   "description": {
-    "message": "タブ右クリックメニューから重複するタブを閉じます。"
+    "message": "右クリックメニューから重複するタブを閉じます。"
   },
   "uniq": {
     "message": "重複タブ削除"
   },
   "uniqBy": {
-    "message": "$1の重複タブ削除"
+    "message": "$1で重複タブ削除"
   },
   "url": {
     "message": "URL"
@@ -32,11 +32,35 @@
   "ignoreBoundariesMenu": {
     "message": "グループ等を無視する"
   },
+  "currentHierarchy": {
+    "message": "クリックした階層内で判定"
+  },
+  "eachHierarchy": {
+    "message": "全ての階層に対して階層ごとに判定"
+  },
+  "allTabs": {
+    "message": "全てのタブから判定"
+  },
+  "hierarchyDescription": {
+    "message": "階層の種類: トップレベル / グループ"
+  },
+  "topLevelScope": {
+    "message": "トップレベル"
+  },
+  "groupScope": {
+    "message": "グループ内"
+  },
+  "eachHierarchyMenu": {
+    "message": "トップレベルおよびグループごと"
+  },
+  "allTabsMenu": {
+    "message": "全てのタブ"
+  },
   "notification": {
     "message": "通知"
   },
   "menuItems": {
-    "message": "メニュー項目"
+    "message": "重複判定方法"
   },
   "settings": {
     "message": "設定"
