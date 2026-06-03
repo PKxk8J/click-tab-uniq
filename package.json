@@ -2,6 +2,7 @@
   "name": "click-tab-uniq",
   "type": "module",
   "private": true,
+  "license": "Apache-2.0",
   "description": "Firefox の右クリックメニューから重複タブを閉じます。",
   "scripts": {
     "lint": "npm run lint:web-ext && npm run lint:js",
