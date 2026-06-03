@@ -8,6 +8,7 @@ import {
   KEY_GROUP_SCOPE,
   KEY_PINNED_SCOPE,
   KEY_TOP_LEVEL_SCOPE,
+  KEY_TOP_LEVEL_HIERARCHY,
   KEY_CONTEXTS,
   KEY_MENU_ITEMS,
   KEY_NOTIFICATION,
@@ -34,12 +35,15 @@ const {
   tabs,
 } = browser
 
+const KEY_UNIQ_ACTION = KEY_UNIQ + ':action'
+
 let currentContexts = []
 let currentEntries = []
 let currentMenuActions = new Map()
 let currentMenuItemIds = []
 
 const SCOPE_MENU_LABEL_KEYS = {
+  [KEY_TOP_LEVEL_HIERARCHY]: KEY_TOP_LEVEL_SCOPE,
   [KEY_EACH_HIERARCHY]: KEY_EACH_HIERARCHY_MENU,
   [KEY_ALL_TABS]: KEY_ALL_TABS_MENU,
 }
@@ -95,9 +99,13 @@ function getKeyScopeTitle (key, scope, tab) {
   return joinMenuTitle(i18n.getMessage(key), getScopeMenuTitle(scope, tab))
 }
 
-async function getHierarchyCount (windowId) {
+async function getHierarchyCount (windowId, targetTab) {
   const tabList = await tabs.query({ windowId })
-  return new Set(tabList.map(getTabHierarchyKey)).size
+  const hierarchyKeys = new Set(tabList.map(getTabHierarchyKey))
+  if (targetTab.pinned || isGroupedTab(targetTab)) {
+    hierarchyKeys.add('topLevel')
+  }
+  return hierarchyKeys.size
 }
 
 function getMenuEntries (menuItems) {
@@ -113,17 +121,42 @@ function getEffectiveScopes (scopes, hierarchyCount) {
   return scopes
 }
 
-function getEffectiveEntries (entries, hierarchyCount) {
+function getCurrentHierarchyDisplayScopes (tab) {
+  if (tab.pinned || isGroupedTab(tab)) {
+    return [KEY_CURRENT_HIERARCHY, KEY_TOP_LEVEL_HIERARCHY]
+  }
+  return [KEY_CURRENT_HIERARCHY]
+}
+
+function expandCurrentHierarchyScopes (scopes, tab) {
+  const expanded = []
+  for (const scope of scopes) {
+    if (scope === KEY_CURRENT_HIERARCHY) {
+      expanded.push(...getCurrentHierarchyDisplayScopes(tab))
+      continue
+    }
+    expanded.push(scope)
+  }
+  return [...new Set(expanded)]
+}
+
+function getEffectiveEntries (entries, hierarchyCount, tab) {
   return entries.map(({ key, scopes }) => ({
     key,
-    scopes: getEffectiveScopes(scopes, hierarchyCount),
+    scopes: getEffectiveScopes(
+      expandCurrentHierarchyScopes(scopes, tab),
+      hierarchyCount,
+    ),
   }))
 }
 
 function getPotentialEntries (entries) {
   return entries.map(({ key, scopes }) => ({
     key,
-    scopes: [...scopes],
+    scopes: expandCurrentHierarchyScopes(scopes, {
+      groupId: 1,
+      pinned: true,
+    }),
   }))
 }
 
@@ -146,10 +179,8 @@ function createKeyLeafMenuRenderItem (key, scope, tab) {
 }
 
 function createMenuRenderPlan (visibleEntries, tab, hierarchyCount) {
-  const effectiveEntries = getEffectiveEntries(visibleEntries, hierarchyCount)
-  const potentialEntries = getPotentialEntries(visibleEntries)
-  const rootCanBeAction = potentialEntries.length === 1 &&
-    potentialEntries[0].scopes.length === 1
+  const effectiveEntries = getEffectiveEntries(visibleEntries, hierarchyCount,
+    tab)
   const actions = new Map()
   const items = []
   const root = {
@@ -161,18 +192,8 @@ function createMenuRenderPlan (visibleEntries, tab, hierarchyCount) {
     const [{ key, scopes }] = effectiveEntries
     if (scopes.length === 1) {
       const scope = scopes[0]
-      if (rootCanBeAction) {
-        root.title = getUniqKeyScopeTitle(key, scope, tab)
-        actions.set(KEY_UNIQ, { key, scope })
-        return { actions, items, root }
-      }
-      root.title = getUniqKeyTitle(key)
-      items.push(createLeafMenuRenderItem(
-        key,
-        scope,
-        getScopeMenuTitle(scope, tab),
-        KEY_UNIQ,
-      ))
+      root.title = getUniqKeyScopeTitle(key, scope, tab)
+      actions.set(KEY_UNIQ, { key, scope })
       return { actions, items, root }
     }
 
@@ -324,19 +345,36 @@ async function rebuildMenu () {
     id: KEY_UNIQ,
     title: i18n.getMessage(KEY_UNIQ),
     contexts,
+    visible: false,
+  })
+  await createMenuItem({
+    id: KEY_UNIQ_ACTION,
+    title: i18n.getMessage(KEY_UNIQ),
+    contexts,
+    visible: false,
   })
   await createStaticMenuItems(entries, contexts)
 }
 
 async function renderCurrentMenuItems (visibleEntries, tab, hierarchyCount) {
   const renderPlan = createMenuRenderPlan(visibleEntries, tab, hierarchyCount)
+  const rootAction = renderPlan.actions.get(KEY_UNIQ)
+  const rootIsAction = renderPlan.items.length === 0 && Boolean(rootAction)
 
   for (const id of currentMenuItemIds) {
     await updateMenuItem(id, { visible: false }).catch(onError)
   }
-  currentMenuActions = renderPlan.actions
+  currentMenuActions = new Map(renderPlan.actions)
+  currentMenuActions.delete(KEY_UNIQ)
+  if (rootIsAction) {
+    currentMenuActions.set(KEY_UNIQ_ACTION, rootAction)
+  }
   await updateMenuItem(KEY_UNIQ, {
-    visible: renderPlan.root.visible,
+    visible: renderPlan.root.visible && !rootIsAction,
+    title: renderPlan.root.title,
+  })
+  await updateMenuItem(KEY_UNIQ_ACTION, {
+    visible: renderPlan.root.visible && rootIsAction,
     title: renderPlan.root.title,
   })
 
@@ -384,7 +422,7 @@ async function handleMenuShown (info, tab) {
   }
 
   await renderCurrentMenuItems(currentEntries, targetTab,
-    await getHierarchyCount(targetTab.windowId))
+    await getHierarchyCount(targetTab.windowId, targetTab))
   await menus.refresh()
 }
 

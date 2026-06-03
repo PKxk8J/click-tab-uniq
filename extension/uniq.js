@@ -11,14 +11,17 @@ import {
   KEY_RESPECT_BOUNDARIES,
   KEY_SUCCESS_MESSAGE,
   KEY_TITLE,
+  KEY_TOP_LEVEL_HIERARCHY,
   KEY_URL,
   KEY_URL_WITHOUT_HASH,
   NOTIFICATION_PERMISSION,
   NOTIFICATION_ID,
   NOTIFICATION_INTERVAL,
   debug,
+  getTabGroupId,
   getTabHierarchy,
   getTabHierarchyKey,
+  isGroupedTab,
   onError,
 } from './common.js'
 
@@ -45,6 +48,23 @@ function normalizeScope (scope) {
 
 function isSameHierarchy (tab, targetTab) {
   return getTabHierarchyKey(tab) === getTabHierarchyKey(targetTab)
+}
+
+function isSameGroup (tab, targetTab) {
+  return isGroupedTab(tab) && isGroupedTab(targetTab) &&
+    getTabGroupId(tab) === getTabGroupId(targetTab)
+}
+
+function isTopLevelHierarchyTab (tab, sourceTab) {
+  if (tab.pinned) {
+    return sourceTab.pinned
+  }
+
+  if (isGroupedTab(tab)) {
+    return isSameGroup(tab, sourceTab)
+  }
+
+  return true
 }
 
 function getTabKey (tab, keyGetter, scope) {
@@ -163,12 +183,17 @@ async function keepActiveDuplicateIfPossible (windowId, target, plan,
 }
 
 function filterTabsByScope (tabList, scope, sourceTab) {
-  if (scope !== KEY_CURRENT_HIERARCHY) {
+  if (scope !== KEY_CURRENT_HIERARCHY &&
+      scope !== KEY_TOP_LEVEL_HIERARCHY) {
     return tabList
   }
 
   if (!sourceTab) {
-    throw new Error('sourceTab is required for currentHierarchy scope')
+    throw new Error('sourceTab is required for hierarchy scope')
+  }
+
+  if (scope === KEY_TOP_LEVEL_HIERARCHY) {
+    return tabList.filter((tab) => isTopLevelHierarchyTab(tab, sourceTab))
   }
 
   return tabList.filter((tab) => isSameHierarchy(tab, sourceTab))
@@ -278,7 +303,8 @@ export async function run (windowId, keyType, closePinned, notification,
     }
 
     const normalizedScope = normalizeScope(scope)
-    if (!ALL_DUPLICATE_SCOPES.includes(normalizedScope)) {
+    if (!ALL_DUPLICATE_SCOPES.includes(normalizedScope) &&
+        normalizedScope !== KEY_TOP_LEVEL_HIERARCHY) {
       throw new Error('Unsupported scope: ' + scope)
     }
 
