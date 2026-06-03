@@ -37,7 +37,7 @@ const {
 let currentContexts = []
 let currentEntries = []
 let currentMenuActions = new Map()
-let renderedMenuItemIds = []
+let currentMenuItemIds = []
 
 const SCOPE_MENU_LABEL_KEYS = {
   [KEY_EACH_HIERARCHY]: KEY_EACH_HIERARCHY_MENU,
@@ -46,6 +46,10 @@ const SCOPE_MENU_LABEL_KEYS = {
 
 function getLeafMenuId (key, scope) {
   return 'scope:' + key + ':' + scope
+}
+
+function getFlatLeafMenuId (key, scope) {
+  return 'flatScope:' + key + ':' + scope
 }
 
 function getKeyMenuId (key) {
@@ -116,6 +120,13 @@ function getEffectiveEntries (entries, hierarchyCount) {
   }))
 }
 
+function getPotentialEntries (entries) {
+  return entries.map(({ key, scopes }) => ({
+    key,
+    scopes: [...scopes],
+  }))
+}
+
 function createLeafMenuRenderItem (key, scope, title, parentId) {
   return {
     action: { key, scope },
@@ -128,7 +139,7 @@ function createLeafMenuRenderItem (key, scope, title, parentId) {
 function createKeyLeafMenuRenderItem (key, scope, tab) {
   return {
     action: { key, scope },
-    id: getKeyMenuId(key),
+    id: getFlatLeafMenuId(key, scope),
     parentId: KEY_UNIQ,
     title: getKeyScopeTitle(key, scope, tab),
   }
@@ -136,6 +147,9 @@ function createKeyLeafMenuRenderItem (key, scope, tab) {
 
 function createMenuRenderPlan (visibleEntries, tab, hierarchyCount) {
   const effectiveEntries = getEffectiveEntries(visibleEntries, hierarchyCount)
+  const potentialEntries = getPotentialEntries(visibleEntries)
+  const rootCanBeAction = potentialEntries.length === 1 &&
+    potentialEntries[0].scopes.length === 1
   const actions = new Map()
   const items = []
   const root = {
@@ -147,8 +161,18 @@ function createMenuRenderPlan (visibleEntries, tab, hierarchyCount) {
     const [{ key, scopes }] = effectiveEntries
     if (scopes.length === 1) {
       const scope = scopes[0]
-      root.title = getUniqKeyScopeTitle(key, scope, tab)
-      actions.set(KEY_UNIQ, { key, scope })
+      if (rootCanBeAction) {
+        root.title = getUniqKeyScopeTitle(key, scope, tab)
+        actions.set(KEY_UNIQ, { key, scope })
+        return { actions, items, root }
+      }
+      root.title = getUniqKeyTitle(key)
+      items.push(createLeafMenuRenderItem(
+        key,
+        scope,
+        getScopeMenuTitle(scope, tab),
+        KEY_UNIQ,
+      ))
       return { actions, items, root }
     }
 
@@ -202,9 +226,9 @@ function createMenuItem (properties) {
   })
 }
 
-async function createRenderedMenuItem (properties) {
+async function createManagedMenuItem (properties) {
   await createMenuItem(properties)
-  renderedMenuItemIds.push(properties.id)
+  currentMenuItemIds.push(properties.id)
 }
 
 function updateMenuItem (id, properties) {
@@ -219,23 +243,59 @@ function updateMenuItem (id, properties) {
   })
 }
 
-function removeMenuItem (id) {
-  return new Promise((resolve, reject) => {
-    menus.remove(id, () => {
-      if (runtime.lastError) {
-        reject(runtime.lastError)
-      } else {
-        resolve()
-      }
-    })
-  })
-}
+async function createStaticMenuItems (entries, contexts) {
+  const potentialEntries = getPotentialEntries(entries)
+  if (potentialEntries.length === 1) {
+    const [{ key, scopes }] = potentialEntries
+    if (scopes.length <= 1) {
+      return
+    }
 
-async function clearRenderedMenuItems () {
-  const ids = [...renderedMenuItemIds].reverse()
-  renderedMenuItemIds = []
-  for (const id of ids) {
-    await removeMenuItem(id).catch(onError)
+    for (const scope of scopes) {
+      await createManagedMenuItem({
+        id: getLeafMenuId(key, scope),
+        title: getScopeMenuTitle(scope, {}),
+        contexts,
+        parentId: KEY_UNIQ,
+        visible: false,
+      })
+    }
+    return
+  }
+
+  for (const { key, scopes } of potentialEntries) {
+    const keyMenuId = getKeyMenuId(key)
+    await createManagedMenuItem({
+      id: keyMenuId,
+      title: i18n.getMessage(key),
+      contexts,
+      parentId: KEY_UNIQ,
+      visible: false,
+    })
+
+    for (const scope of scopes) {
+      await createManagedMenuItem({
+        id: getFlatLeafMenuId(key, scope),
+        title: getKeyScopeTitle(key, scope, {}),
+        contexts,
+        parentId: KEY_UNIQ,
+        visible: false,
+      })
+    }
+
+    if (scopes.length <= 1) {
+      continue
+    }
+
+    for (const scope of scopes) {
+      await createManagedMenuItem({
+        id: getLeafMenuId(key, scope),
+        title: getScopeMenuTitle(scope, {}),
+        contexts,
+        parentId: keyMenuId,
+        visible: false,
+      })
+    }
   }
 }
 
@@ -251,7 +311,7 @@ async function rebuildMenu () {
   currentContexts = contexts
   currentEntries = entries
   currentMenuActions = new Map()
-  renderedMenuItemIds = []
+  currentMenuItemIds = []
 
   await menus.removeAll()
   debug('Clear menu items')
@@ -265,12 +325,15 @@ async function rebuildMenu () {
     title: i18n.getMessage(KEY_UNIQ),
     contexts,
   })
+  await createStaticMenuItems(entries, contexts)
 }
 
 async function renderCurrentMenuItems (visibleEntries, tab, hierarchyCount) {
   const renderPlan = createMenuRenderPlan(visibleEntries, tab, hierarchyCount)
 
-  await clearRenderedMenuItems()
+  for (const id of currentMenuItemIds) {
+    await updateMenuItem(id, { visible: false }).catch(onError)
+  }
   currentMenuActions = renderPlan.actions
   await updateMenuItem(KEY_UNIQ, {
     visible: renderPlan.root.visible,
@@ -278,11 +341,9 @@ async function renderCurrentMenuItems (visibleEntries, tab, hierarchyCount) {
   })
 
   for (const item of renderPlan.items) {
-    await createRenderedMenuItem({
-      id: item.id,
+    await updateMenuItem(item.id, {
+      visible: true,
       title: item.title,
-      contexts: currentContexts,
-      parentId: item.parentId,
     })
     if (item.action) {
       currentMenuActions.set(item.id, item.action)
