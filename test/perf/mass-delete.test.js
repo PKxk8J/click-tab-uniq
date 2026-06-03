@@ -168,7 +168,7 @@ describe('Firefox real tab deletion performance', () => {
         }
 
         const startedAt = performance.now()
-        await run(sourceWindowId, 'url', false, false)
+        await run(sourceWindowId, 'url', false)
         const durationMs = performance.now() - startedAt
 
         const remaining = await waitUntil(async () => {

@@ -21,7 +21,6 @@ export const KEY_EACH_HIERARCHY = 'eachHierarchy'
 export const KEY_ALL_TABS = 'allTabs'
 export const KEY_TOP_LEVEL_SCOPE = 'topLevelScope'
 export const KEY_GROUP_SCOPE = 'groupScope'
-export const KEY_PINNED_SCOPE = 'pinnedScope'
 export const KEY_EACH_HIERARCHY_MENU = 'eachHierarchyMenu'
 export const KEY_ALL_TABS_MENU = 'allTabsMenu'
 
@@ -135,11 +134,7 @@ export function isGroupedTab (tab) {
 }
 
 export function getTabHierarchy (tab) {
-  if (tab.pinned) {
-    return ['pinned']
-  }
-
-  if (isGroupedTab(tab)) {
+  if (!tab.pinned && isGroupedTab(tab)) {
     return ['group', getTabGroupId(tab)]
   }
 

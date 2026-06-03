@@ -57,11 +57,11 @@ function isSameGroup (tab, targetTab) {
 
 function isTopLevelHierarchyTab (tab, sourceTab) {
   if (tab.pinned) {
-    return sourceTab.pinned
+    return true
   }
 
   if (isGroupedTab(tab)) {
-    return isSameGroup(tab, sourceTab)
+    return !sourceTab.pinned && isSameGroup(tab, sourceTab)
   }
 
   return true
@@ -79,12 +79,12 @@ function getTabKey (tab, keyGetter, scope) {
   ])
 }
 
-function shouldPreferSurvivor (candidateTab, survivorTab, scope) {
-  return scope === KEY_ALL_TABS && candidateTab.pinned && !survivorTab.pinned
+function shouldPreferSurvivor (candidateTab, survivorTab) {
+  return candidateTab.pinned && !survivorTab.pinned
 }
 
-function shouldKeepActiveDuplicate (activeTab, survivorTab, scope) {
-  return !(scope === KEY_ALL_TABS && survivorTab.pinned && !activeTab.pinned)
+function shouldKeepActiveDuplicate (activeTab, survivorTab) {
+  return !(survivorTab.pinned && !activeTab.pinned)
 }
 
 async function activateBest (windowId, excludedIds) {
@@ -159,7 +159,7 @@ function createDuplicatePlan (tabList, keyGetter, scope) {
     }
 
     const survivorTab = idToEntry.get(plan.survivorId).tab
-    if (shouldPreferSurvivor(tab, survivorTab, scope)) {
+    if (shouldPreferSurvivor(tab, survivorTab)) {
       removeIds.push(plan.survivorId)
       plan.survivorId = tab.id
       continue
@@ -176,7 +176,7 @@ function createDuplicatePlan (tabList, keyGetter, scope) {
 }
 
 async function keepActiveDuplicateIfPossible (windowId, target, plan,
-  removeIdSet, scope) {
+  removeIdSet) {
   const activeTabId = await getActiveTabId(windowId)
   const targetIndex = target.indexOf(activeTabId)
   if (targetIndex < 0) {
@@ -191,7 +191,7 @@ async function keepActiveDuplicateIfPossible (windowId, target, plan,
     return
   }
 
-  if (!shouldKeepActiveDuplicate(activeEntry.tab, rival, scope)) {
+  if (!shouldKeepActiveDuplicate(activeEntry.tab, rival)) {
     await activateBest(windowId, removeIdSet)
     return
   }
@@ -232,8 +232,7 @@ async function closeDuplicateTabs (windowId, keyGetter, scope, sourceTab,
   const removeIdSet = new Set(removeIds)
   for (let i = removeIds.length; i > 0; i -= BULK_SIZE) {
     const target = removeIds.slice(Math.max(0, i - BULK_SIZE), i)
-    await keepActiveDuplicateIfPossible(windowId, target, plan, removeIdSet,
-      scope)
+    await keepActiveDuplicateIfPossible(windowId, target, plan, removeIdSet)
 
     await tabs.remove(target)
     debug('Tabs' + target + ' were closed')
@@ -302,7 +301,7 @@ async function tryNotify (progress) {
   }
 }
 
-export async function run (windowId, keyType, closePinned, notification,
+export async function run (windowId, keyType, notification,
   scope = KEY_EACH_HIERARCHY, sourceTab) {
   const progress = {
     done: 0,

@@ -225,7 +225,7 @@ describe('Firefox extension E2E', () => {
           throw new Error('created tab URLs did not settle')
         }
 
-        await run(sourceWindowId, 'url', false, false)
+        await run(sourceWindowId, 'url', false)
 
         const remaining = await waitUntil(async () => {
           const tabs = await browser.tabs.query({

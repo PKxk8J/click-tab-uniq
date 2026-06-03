@@ -6,7 +6,6 @@ import {
   KEY_EACH_HIERARCHY,
   KEY_EACH_HIERARCHY_MENU,
   KEY_GROUP_SCOPE,
-  KEY_PINNED_SCOPE,
   KEY_TOP_LEVEL_SCOPE,
   KEY_TOP_LEVEL_HIERARCHY,
   KEY_CONTEXTS,
@@ -65,11 +64,7 @@ function joinMenuTitle (...titles) {
 }
 
 function getCurrentHierarchyMenuTitle (tab) {
-  if (tab.pinned) {
-    return i18n.getMessage(KEY_PINNED_SCOPE)
-  }
-
-  if (isGroupedTab(tab)) {
+  if (!tab.pinned && isGroupedTab(tab)) {
     return i18n.getMessage(KEY_GROUP_SCOPE)
   }
 
@@ -102,7 +97,7 @@ function getKeyScopeTitle (key, scope, tab) {
 async function getHierarchyCount (windowId, targetTab) {
   const tabList = await tabs.query({ windowId })
   const hierarchyKeys = new Set(tabList.map(getTabHierarchyKey))
-  if (targetTab.pinned || isGroupedTab(targetTab)) {
+  if (!targetTab.pinned && isGroupedTab(targetTab)) {
     hierarchyKeys.add('topLevel')
   }
   return hierarchyKeys.size
@@ -122,7 +117,7 @@ function getEffectiveScopes (scopes, hierarchyCount) {
 }
 
 function getCurrentHierarchyDisplayScopes (tab) {
-  if (tab.pinned || isGroupedTab(tab)) {
+  if (!tab.pinned && isGroupedTab(tab)) {
     return [KEY_CURRENT_HIERARCHY, KEY_TOP_LEVEL_HIERARCHY]
   }
   return [KEY_CURRENT_HIERARCHY]
@@ -155,7 +150,7 @@ function getPotentialEntries (entries) {
     key,
     scopes: expandCurrentHierarchyScopes(scopes, {
       groupId: 1,
-      pinned: true,
+      pinned: false,
     }),
   }))
 }
@@ -410,8 +405,7 @@ async function handleMenuClick (info, tab) {
   const notification = normalizeNotification(
     await getValue(KEY_NOTIFICATION),
   )
-  await run(targetTab.windowId, entry.key, targetTab.pinned, notification,
-    entry.scope, targetTab)
+  await run(targetTab.windowId, entry.key, notification, entry.scope, targetTab)
 }
 
 async function handleMenuShown (info, tab) {

@@ -42,16 +42,13 @@
     "message": "全てのタブから判定"
   },
   "hierarchyDescription": {
-    "message": "階層の種類: トップレベル / グループ / ピン留めされたタブ"
+    "message": "階層の種類: トップレベル / グループ"
   },
   "topLevelScope": {
     "message": "トップレベル"
   },
   "groupScope": {
     "message": "グループ内"
-  },
-  "pinnedScope": {
-    "message": "ピン留めされたタブ内"
   },
   "eachHierarchyMenu": {
     "message": "トップレベルおよびグループごと"
