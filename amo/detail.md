@@ -1,3 +1,9 @@
+## Summary
+
+Close duplicate tabs from the right-click menu.
+
+## Description
+
 ClickTabUniq closes duplicate tabs directly from Firefox's right-click menu.
 
 Choose how duplicates are detected:
