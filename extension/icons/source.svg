@@ -20,9 +20,9 @@
   <g transform="translate(-8 -13)">
     <path d="M23 72V38c0-8 5-13 13-13h18c6 0 9 2 13 7l4 5h27c8 0 13 5 13 13v22c0 8-5 13-13 13H36c-8 0-13-5-13-13Z" fill="#14b8a6"/>
     <path d="M23 54h88v18c0 8-5 13-13 13H36c-8 0-13-5-13-13V54Z" fill="#5eead4"/>
-    <path d="M34 91V55c0-8 5-13 13-13h19c6 0 9 2 13 7l4 5h24c8 0 13 5 13 13v24c0 8-5 13-13 13H47c-8 0-13-5-13-13Z" fill="#0f766e"/>
-    <path d="M34 69h86v22c0 8-5 13-13 13H47c-8 0-13-5-13-13V69Z" fill="#14b8a6"/>
+    <path d="M35 91V55c0-8 5-13 13-13h19c6 0 9 2 13 7l4 5h24c8 0 13 5 13 13v24c0 8-5 13-13 13H48c-8 0-13-5-13-13Z" fill="#0f766e"/>
+    <path d="M35 69h86v22c0 8-5 13-13 13H48c-8 0-13-5-13-13V69Z" fill="#14b8a6"/>
   </g>
-  <circle cx="36" cy="92" r="23" fill="#155e75" stroke="#ecfeff" stroke-width="3"/>
-  <path d="M24 92h24" stroke="#ecfeff" stroke-width="8" stroke-linecap="round"/>
+  <circle cx="44" cy="84" r="34.75" fill="#155e75" stroke="#ecfeff" stroke-width="4"/>
+  <path d="M26 84h36" stroke="#ecfeff" stroke-width="12" stroke-linecap="round"/>
 </svg>
