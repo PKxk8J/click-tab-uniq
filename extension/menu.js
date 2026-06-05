@@ -340,7 +340,6 @@ async function rebuildMenu () {
     id: KEY_UNIQ,
     title: i18n.getMessage(KEY_UNIQ),
     contexts,
-    visible: false,
   })
   await createMenuItem({
     id: KEY_UNIQ_ACTION,
@@ -364,14 +363,25 @@ async function renderCurrentMenuItems (visibleEntries, tab, hierarchyCount) {
   if (rootIsAction) {
     currentMenuActions.set(KEY_UNIQ_ACTION, rootAction)
   }
-  await updateMenuItem(KEY_UNIQ, {
-    visible: renderPlan.root.visible && !rootIsAction,
-    title: renderPlan.root.title,
-  })
-  await updateMenuItem(KEY_UNIQ_ACTION, {
-    visible: renderPlan.root.visible && rootIsAction,
-    title: renderPlan.root.title,
-  })
+  if (rootIsAction) {
+    await updateMenuItem(KEY_UNIQ_ACTION, {
+      visible: renderPlan.root.visible,
+      title: renderPlan.root.title,
+    })
+    await updateMenuItem(KEY_UNIQ, {
+      visible: false,
+      title: renderPlan.root.title,
+    })
+  } else {
+    await updateMenuItem(KEY_UNIQ, {
+      visible: renderPlan.root.visible,
+      title: renderPlan.root.title,
+    })
+    await updateMenuItem(KEY_UNIQ_ACTION, {
+      visible: false,
+      title: renderPlan.root.title,
+    })
+  }
 
   for (const item of renderPlan.items) {
     await updateMenuItem(item.id, {
