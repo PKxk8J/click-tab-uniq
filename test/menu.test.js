@@ -7,6 +7,7 @@ const state = {
   menuItems: new Map(),
   removed: [],
   refreshCount: 0,
+  storageGetWait: undefined,
 }
 
 function createEvent () {
@@ -64,6 +65,7 @@ function resetState ({ menuItems, tabs }) {
   state.menuItems.clear()
   state.removed = []
   state.refreshCount = 0
+  state.storageGetWait = undefined
 }
 
 globalThis.browser = {
@@ -130,6 +132,7 @@ globalThis.browser = {
   storage: {
     sync: {
       get: async (key) => {
+        await state.storageGetWait?.()
         if (typeof key === 'string') {
           return { [key]: state.storageData[key] }
         }
@@ -170,6 +173,7 @@ resetState({
   ],
 })
 await import('../extension/menu.js?menu-test')
+await new Promise((resolve) => globalThis.setTimeout(resolve, 0))
 
 async function rebuildMenu () {
   await events.runtimeStartup.listeners[0]()
@@ -197,6 +201,48 @@ function getAllChildIds (parentId) {
     filter(([, item]) => item.parentId === parentId).
     map(([id]) => id)
 }
+
+test('ロード時にメニューを復元する', async () => {
+  assert.ok(state.menuItems.has('uniq'))
+  assert.notEqual(state.menuItems.get('uniq').visible, false)
+  assert.equal(state.menuItems.get('uniq:action').visible, false)
+  assert.deepEqual(getAllChildIds('uniq'), [
+    'scope:url:currentHierarchy',
+    'scope:url:topLevelHierarchy',
+    'scope:url:eachHierarchy',
+    'scope:url:allTabs',
+  ])
+})
+
+test('表示処理は進行中のメニュー復元完了を待つ', async () => {
+  let releaseStorage = () => {}
+  const storageReady = new Promise((resolve) => {
+    releaseStorage = resolve
+  })
+  resetState({
+    menuItems: { title: ['currentHierarchy'] },
+    tabs: [
+      { id: 1, windowId: 1, index: 0, active: true },
+      { id: 2, windowId: 1, index: 1 },
+    ],
+  })
+  state.storageGetWait = async () => storageReady
+
+  const rebuildPromise = rebuildMenu()
+  const showPromise = showMenu(1)
+  await new Promise((resolve) => globalThis.setTimeout(resolve, 0))
+
+  assert.equal(state.refreshCount, 0)
+
+  releaseStorage()
+  await Promise.all([rebuildPromise, showPromise])
+
+  assert.equal(state.menuItems.get('uniq').visible, false)
+  assert.equal(state.menuItems.get('uniq:action').visible, true)
+  assert.equal(state.menuItems.get('uniq:action').title,
+    'uniq: title: topLevelScope')
+  assert.equal(state.refreshCount, 1)
+})
 
 test('表示前に必要な子メニュー候補を作成する', async () => {
   resetState({

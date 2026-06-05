@@ -394,7 +394,25 @@ async function renderCurrentMenuItems (visibleEntries, tab, hierarchyCount) {
   }
 }
 
-const queueRebuildMenu = createQueuedTask(rebuildMenu)
+const runQueuedRebuildMenu = createQueuedTask(rebuildMenu)
+let rebuildMenuPromise
+
+function queueRebuildMenu () {
+  const promise = runQueuedRebuildMenu()
+  rebuildMenuPromise = promise
+  promise.finally(() => {
+    if (rebuildMenuPromise === promise) {
+      rebuildMenuPromise = undefined
+    }
+  })
+  return promise
+}
+
+async function waitForMenuRebuild () {
+  if (rebuildMenuPromise) {
+    await rebuildMenuPromise
+  }
+}
 
 async function getCurrentTab () {
   const [tab] = await tabs.query({ active: true, currentWindow: true })
@@ -402,6 +420,7 @@ async function getCurrentTab () {
 }
 
 async function handleMenuClick (info, tab) {
+  await waitForMenuRebuild()
   const entry = currentMenuActions.get(info.menuItemId)
   if (!entry) {
     return
@@ -419,6 +438,7 @@ async function handleMenuClick (info, tab) {
 }
 
 async function handleMenuShown (info, tab) {
+  await waitForMenuRebuild()
   const targetTab = tab || await getCurrentTab()
   if (!targetTab || currentContexts.length <= 0 ||
       currentEntries.length <= 0) {
