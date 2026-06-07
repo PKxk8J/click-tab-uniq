@@ -51,6 +51,23 @@ function normalizeScope (scope) {
   return LEGACY_SCOPE_MAP[scope] || scope
 }
 
+function getKeyGetter (keyType) {
+  const keyGetter = KEY_GETTERS[keyType]
+  if (!keyGetter) {
+    throw new Error('Unsupported keyType: ' + keyType)
+  }
+  return keyGetter
+}
+
+function getSupportedScope (scope) {
+  const normalizedScope = normalizeScope(scope)
+  if (!ALL_DUPLICATE_SCOPES.includes(normalizedScope) &&
+      normalizedScope !== KEY_TOP_LEVEL_HIERARCHY) {
+    throw new Error('Unsupported scope: ' + scope)
+  }
+  return normalizedScope
+}
+
 function isSameHierarchy (tab, targetTab) {
   return getTabHierarchyKey(tab) === getTabHierarchyKey(targetTab)
 }
@@ -293,6 +310,15 @@ function countClosedByHierarchy (target, plan, hierarchyResultByKey) {
   }
 }
 
+export function countDuplicateTabs (tabList, keyType,
+  scope = KEY_EACH_HIERARCHY, sourceTab) {
+  const keyGetter = getKeyGetter(keyType)
+  const normalizedScope = getSupportedScope(scope)
+  const targetTabs = filterTabsByScope(tabList, normalizedScope, sourceTab)
+  return createDuplicatePlan(targetTabs, keyGetter, normalizedScope).
+    removeIds.length
+}
+
 async function closeDuplicateTabs (windowId, keyGetter, scope, sourceTab,
   progress) {
   const allTabs = await tabs.query({ windowId })
@@ -434,16 +460,8 @@ export async function run (windowId, keyType, notification,
       stopProgressNotification = startProgressNotification(progress)
     }
 
-    const keyGetter = KEY_GETTERS[keyType]
-    if (!keyGetter) {
-      throw new Error('Unsupported keyType: ' + keyType)
-    }
-
-    const normalizedScope = normalizeScope(scope)
-    if (!ALL_DUPLICATE_SCOPES.includes(normalizedScope) &&
-        normalizedScope !== KEY_TOP_LEVEL_HIERARCHY) {
-      throw new Error('Unsupported scope: ' + scope)
-    }
+    const keyGetter = getKeyGetter(keyType)
+    const normalizedScope = getSupportedScope(scope)
 
     await closeDuplicateTabs(windowId, keyGetter, normalizedScope, sourceTab,
       progress)

@@ -23,6 +23,7 @@ import {
   onError,
 } from './common.js'
 import {
+  countDuplicateTabs,
   run,
 } from './uniq.js'
 
@@ -40,6 +41,8 @@ let currentContexts = []
 let currentEntries = []
 let currentMenuActions = new Map()
 let currentMenuItemIds = []
+let currentMenuInstanceId = 0
+let nextMenuInstanceId = 1
 
 const SCOPE_MENU_LABEL_KEYS = {
   [KEY_TOP_LEVEL_HIERARCHY]: KEY_TOP_LEVEL_SCOPE,
@@ -59,8 +62,20 @@ function getKeyMenuId (key) {
   return 'key:' + key
 }
 
+function getActionCountKey (key, scope) {
+  return key + ':' + scope
+}
+
 function joinMenuTitle (...titles) {
   return titles.filter(Boolean).join(': ')
+}
+
+function withDuplicateCount (title, key, scope, duplicateCounts) {
+  const count = duplicateCounts?.get(getActionCountKey(key, scope))
+  if (count === undefined) {
+    return title
+  }
+  return title + ' (' + count + ')'
 }
 
 function getCurrentHierarchyMenuTitle (tab) {
@@ -82,20 +97,24 @@ function getUniqKeyTitle (key) {
   return joinMenuTitle(i18n.getMessage(KEY_UNIQ), i18n.getMessage(key))
 }
 
-function getUniqKeyScopeTitle (key, scope, tab) {
-  return joinMenuTitle(
+function getUniqKeyScopeTitle (key, scope, tab, duplicateCounts) {
+  return withDuplicateCount(joinMenuTitle(
     i18n.getMessage(KEY_UNIQ),
     i18n.getMessage(key),
     getScopeMenuTitle(scope, tab),
+  ), key, scope, duplicateCounts)
+}
+
+function getKeyScopeTitle (key, scope, tab, duplicateCounts) {
+  return withDuplicateCount(
+    joinMenuTitle(i18n.getMessage(key), getScopeMenuTitle(scope, tab)),
+    key,
+    scope,
+    duplicateCounts,
   )
 }
 
-function getKeyScopeTitle (key, scope, tab) {
-  return joinMenuTitle(i18n.getMessage(key), getScopeMenuTitle(scope, tab))
-}
-
-async function getHierarchyCount (windowId, targetTab) {
-  const tabList = await tabs.query({ windowId })
+function getHierarchyCount (tabList, targetTab) {
   const hierarchyKeys = new Set(tabList.map(getTabHierarchyKey))
   if (!targetTab.pinned && isGroupedTab(targetTab)) {
     hierarchyKeys.add('topLevel')
@@ -155,25 +174,27 @@ function getPotentialEntries (entries) {
   }))
 }
 
-function createLeafMenuRenderItem (key, scope, title, parentId) {
+function createLeafMenuRenderItem (key, scope, title, parentId,
+  duplicateCounts) {
   return {
     action: { key, scope },
     id: getLeafMenuId(key, scope),
     parentId,
-    title,
+    title: withDuplicateCount(title, key, scope, duplicateCounts),
   }
 }
 
-function createKeyLeafMenuRenderItem (key, scope, tab) {
+function createKeyLeafMenuRenderItem (key, scope, tab, duplicateCounts) {
   return {
     action: { key, scope },
     id: getFlatLeafMenuId(key, scope),
     parentId: KEY_UNIQ,
-    title: getKeyScopeTitle(key, scope, tab),
+    title: getKeyScopeTitle(key, scope, tab, duplicateCounts),
   }
 }
 
-function createMenuRenderPlan (visibleEntries, tab, hierarchyCount) {
+function createMenuRenderPlan (visibleEntries, tab, hierarchyCount,
+  duplicateCounts) {
   const effectiveEntries = getEffectiveEntries(visibleEntries, hierarchyCount,
     tab)
   const actions = new Map()
@@ -187,7 +208,7 @@ function createMenuRenderPlan (visibleEntries, tab, hierarchyCount) {
     const [{ key, scopes }] = effectiveEntries
     if (scopes.length === 1) {
       const scope = scopes[0]
-      root.title = getUniqKeyScopeTitle(key, scope, tab)
+      root.title = getUniqKeyScopeTitle(key, scope, tab, duplicateCounts)
       actions.set(KEY_UNIQ, { key, scope })
       return { actions, items, root }
     }
@@ -199,6 +220,7 @@ function createMenuRenderPlan (visibleEntries, tab, hierarchyCount) {
         scope,
         getScopeMenuTitle(scope, tab),
         KEY_UNIQ,
+        duplicateCounts,
       ))
     }
     return { actions, items, root }
@@ -206,7 +228,8 @@ function createMenuRenderPlan (visibleEntries, tab, hierarchyCount) {
 
   for (const { key, scopes } of effectiveEntries) {
     if (scopes.length === 1) {
-      items.push(createKeyLeafMenuRenderItem(key, scopes[0], tab))
+      items.push(createKeyLeafMenuRenderItem(key, scopes[0], tab,
+        duplicateCounts))
       continue
     }
 
@@ -222,6 +245,7 @@ function createMenuRenderPlan (visibleEntries, tab, hierarchyCount) {
         scope,
         getScopeMenuTitle(scope, tab),
         parentId,
+        duplicateCounts,
       ))
     }
   }
@@ -316,6 +340,7 @@ async function createStaticMenuItems (entries, contexts) {
 }
 
 async function rebuildMenu () {
+  currentMenuInstanceId = 0
   const [storedContexts, storedMenuItems] = await Promise.all([
     getValue(KEY_CONTEXTS),
     getValue(KEY_MENU_ITEMS),
@@ -350,10 +375,16 @@ async function rebuildMenu () {
   await createStaticMenuItems(entries, contexts)
 }
 
+function getRootRenderItemId (renderPlan) {
+  const rootAction = renderPlan.actions.get(KEY_UNIQ)
+  const rootIsAction = renderPlan.items.length === 0 && Boolean(rootAction)
+  return rootIsAction ? KEY_UNIQ_ACTION : KEY_UNIQ
+}
+
 async function renderCurrentMenuItems (visibleEntries, tab, hierarchyCount) {
   const renderPlan = createMenuRenderPlan(visibleEntries, tab, hierarchyCount)
   const rootAction = renderPlan.actions.get(KEY_UNIQ)
-  const rootIsAction = renderPlan.items.length === 0 && Boolean(rootAction)
+  const rootIsAction = getRootRenderItemId(renderPlan) === KEY_UNIQ_ACTION
 
   for (const id of currentMenuItemIds) {
     await updateMenuItem(id, { visible: false }).catch(onError)
@@ -392,6 +423,63 @@ async function renderCurrentMenuItems (visibleEntries, tab, hierarchyCount) {
       currentMenuActions.set(item.id, item.action)
     }
   }
+}
+
+function isCurrentMenuInstance (menuInstanceId) {
+  return menuInstanceId !== 0 && menuInstanceId === currentMenuInstanceId
+}
+
+function createMenuDuplicateCounts (visibleEntries, tab, hierarchyCount,
+  tabList) {
+  const counts = new Map()
+  for (const { key, scopes } of getEffectiveEntries(visibleEntries,
+    hierarchyCount, tab)) {
+    for (const scope of scopes) {
+      counts.set(getActionCountKey(key, scope),
+        countDuplicateTabs(tabList, key, scope, tab))
+    }
+  }
+  return counts
+}
+
+async function updateCurrentMenuItemTitles (renderPlan, menuInstanceId) {
+  const updates = [
+    [getRootRenderItemId(renderPlan), renderPlan.root.title],
+    ...renderPlan.items.map((item) => [item.id, item.title]),
+  ]
+
+  if (!isCurrentMenuInstance(menuInstanceId)) {
+    return
+  }
+
+  await Promise.all(updates.map(([id, title]) => {
+    return updateMenuItem(id, { title }).catch(onError)
+  }))
+
+  if (isCurrentMenuInstance(menuInstanceId)) {
+    await menus.refresh()
+  }
+}
+
+async function updateCurrentMenuCounts (visibleEntries, tab, hierarchyCount,
+  tabList, menuInstanceId) {
+  if (!isCurrentMenuInstance(menuInstanceId)) {
+    return
+  }
+
+  const duplicateCounts = createMenuDuplicateCounts(visibleEntries, tab,
+    hierarchyCount, tabList)
+  const renderPlan = createMenuRenderPlan(visibleEntries, tab, hierarchyCount,
+    duplicateCounts)
+  await updateCurrentMenuItemTitles(renderPlan, menuInstanceId)
+}
+
+function queueCurrentMenuCountUpdate (visibleEntries, tab, hierarchyCount,
+  tabList, menuInstanceId) {
+  globalThis.setTimeout(() => {
+    updateCurrentMenuCounts(visibleEntries, tab, hierarchyCount, tabList,
+      menuInstanceId).catch(onError)
+  }, 0)
 }
 
 const runQueuedRebuildMenu = createQueuedTask(rebuildMenu)
@@ -438,6 +526,9 @@ async function handleMenuClick (info, tab) {
 }
 
 async function handleMenuShown (info, tab) {
+  const menuInstanceId = nextMenuInstanceId++
+  currentMenuInstanceId = menuInstanceId
+
   await waitForMenuRebuild()
   const targetTab = tab || await getCurrentTab()
   if (!targetTab || currentContexts.length <= 0 ||
@@ -445,9 +536,20 @@ async function handleMenuShown (info, tab) {
     return
   }
 
-  await renderCurrentMenuItems(currentEntries, targetTab,
-    await getHierarchyCount(targetTab.windowId, targetTab))
+  const tabList = await tabs.query({ windowId: targetTab.windowId })
+  const hierarchyCount = getHierarchyCount(tabList, targetTab)
+
+  await renderCurrentMenuItems(currentEntries, targetTab, hierarchyCount)
+  if (!isCurrentMenuInstance(menuInstanceId)) {
+    return
+  }
   await menus.refresh()
+  queueCurrentMenuCountUpdate(currentEntries, targetTab, hierarchyCount, tabList,
+    menuInstanceId)
+}
+
+function handleMenuHidden () {
+  currentMenuInstanceId = 0
 }
 
 runtime.onInstalled.addListener(() => {
@@ -474,5 +576,7 @@ menus.onClicked.addListener((info, tab) => {
 menus.onShown.addListener((info, tab) => {
   return handleMenuShown(info, tab).catch(onError)
 })
+
+menus.onHidden?.addListener(handleMenuHidden)
 
 queueRebuildMenu().catch(onError)

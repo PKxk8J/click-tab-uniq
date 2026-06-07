@@ -103,6 +103,7 @@ globalThis.browser = {
 }
 
 const {
+  countDuplicateTabs,
   run,
 } = await import('../extension/uniq.js')
 const {
@@ -137,6 +138,19 @@ test('通知設定を真偽値に正規化する', () => {
   assert.equal(normalizeNotification(undefined), false)
   assert.equal(normalizeNotification(true), true)
   assert.equal(normalizeNotification('true'), false)
+})
+
+test('重複数だけを副作用なしで計算する', () => {
+  const tabs = [
+    { id: 1, windowId: 1, index: 0, active: true, pinned: false, url: 'https://example.com/', title: 'Example' },
+    { id: 2, windowId: 1, index: 1, active: false, pinned: false, url: 'https://example.com/', title: 'Example' },
+    { id: 3, windowId: 1, index: 2, active: false, pinned: false, groupId: 10, url: 'https://example.com/', title: 'Example' },
+    { id: 4, windowId: 1, index: 3, active: false, pinned: false, groupId: 10, url: 'https://example.com/', title: 'Example' },
+  ]
+
+  assert.equal(countDuplicateTabs(tabs, 'url', 'currentHierarchy', tabs[0]), 1)
+  assert.equal(countDuplicateTabs(tabs, 'url', 'eachHierarchy', tabs[0]), 2)
+  assert.equal(countDuplicateTabs(tabs, 'url', 'allTabs', tabs[0]), 3)
 })
 
 test('キュータスクは実行中の再要求をもう一度実行する', async () => {
