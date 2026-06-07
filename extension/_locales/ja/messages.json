@@ -105,6 +105,29 @@
       }
     }
   },
+  "hierarchyResultHeader": {
+    "message": "階層別:"
+  },
+  "hierarchyResultLine": {
+    "message": "$NAME$: $ALL$個中$CLOSED$個を削除",
+    "placeholders": {
+      "name": {
+        "content": "$1"
+      },
+      "all": {
+        "content": "$2"
+      },
+      "closed": {
+        "content": "$3"
+      }
+    }
+  },
+  "groupHierarchyLabel": {
+    "message": "グループ「$1」"
+  },
+  "groupNumberedHierarchyLabel": {
+    "message": "グループ $1"
+  },
   "failureMessage": {
     "message": "重複タブ削除失敗\n$1"
   },

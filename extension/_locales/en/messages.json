@@ -109,6 +109,29 @@
       }
     }
   },
+  "hierarchyResultHeader": {
+    "message": "By hierarchy:"
+  },
+  "hierarchyResultLine": {
+    "message": "$NAME$: $CLOSED$ of $ALL$ tabs closed.",
+    "placeholders": {
+      "name": {
+        "content": "$1"
+      },
+      "all": {
+        "content": "$2"
+      },
+      "closed": {
+        "content": "$3"
+      }
+    }
+  },
+  "groupHierarchyLabel": {
+    "message": "Group \"$1\""
+  },
+  "groupNumberedHierarchyLabel": {
+    "message": "Group $1"
+  },
   "failureMessage": {
     "message": "Closing duplicate tabs failed.\n$1"
   },
