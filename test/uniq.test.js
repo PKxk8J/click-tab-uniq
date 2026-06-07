@@ -6,6 +6,7 @@ const state = {
   tabs: [],
   removed: [],
   activated: [],
+  groups: new Map(),
   notifications: [],
   notificationError: undefined,
 }
@@ -18,18 +19,25 @@ function resetTabs (tabs) {
   state.tabs = tabs.map(cloneTab)
   state.removed = []
   state.activated = []
+  state.groups = new Map()
   state.notifications = []
   state.notificationError = undefined
 }
 
 globalThis.browser = {
   i18n: {
-    getMessage: (key) => {
+    getMessage: (key, substitutions) => {
       if (key === 'debug') {
         return 'release'
       }
       if (key === 'name') {
         return 'ClickTabUniq'
+      }
+      if (Array.isArray(substitutions)) {
+        return key + ':' + substitutions.join(',')
+      }
+      if (substitutions !== undefined) {
+        return key + ':' + substitutions
       }
       return key
     },
@@ -45,6 +53,15 @@ globalThis.browser = {
   },
   permissions: {
     contains: async () => true,
+  },
+  tabGroups: {
+    get: async (id) => {
+      const group = state.groups.get(id)
+      if (!group) {
+        throw new Error('Unknown group')
+      }
+      return { id, ...group }
+    },
   },
   storage: {
     sync: {},
@@ -193,6 +210,50 @@ test('update API がなくても重複タブを閉じて通知を送る', async 
   assert.equal(state.notifications[0].options.type, 'basic')
   assert.equal(state.notifications[0].options.title, 'ClickTabUniq')
   assert.equal(state.notifications[0].options.message.includes('successMessage'), true)
+  assert.equal(state.notifications[0].options.message.includes(
+    'hierarchyResultLine:topLevelScope,2,1',
+  ), true)
+})
+
+test('完了通知に階層ごとの結果を載せる', async () => {
+  resetTabs([
+    { id: 1, windowId: 1, index: 0, active: false, pinned: false, url: 'https://example.com/top', title: 'Top' },
+    { id: 2, windowId: 1, index: 1, active: true, pinned: false, url: 'https://example.com/top', title: 'Top' },
+    { id: 3, windowId: 1, index: 2, active: false, pinned: false, url: 'https://example.com/unique-top', title: 'Unique Top' },
+    { id: 4, windowId: 1, index: 3, active: false, pinned: false, groupId: 10, url: 'https://example.com/group', title: 'Group' },
+    { id: 5, windowId: 1, index: 4, active: false, pinned: false, groupId: 10, url: 'https://example.com/group', title: 'Group' },
+    { id: 6, windowId: 1, index: 5, active: false, pinned: false, groupId: 20, url: 'https://example.com/unique-group', title: 'Unique Group' },
+  ])
+  state.groups.set(10, { title: '仕事' })
+
+  await run(1, 'url', true)
+
+  const { message } = state.notifications[0].options
+  assert.equal(message.includes('hierarchyResultHeader'), true)
+  assert.equal(message.includes(
+    'hierarchyResultLine:topLevelScope,3,1',
+  ), true)
+  assert.equal(message.includes(
+    'hierarchyResultLine:groupHierarchyLabel:仕事,2,1',
+  ), true)
+  assert.equal(message.includes(
+    'hierarchyResultLine:groupNumberedHierarchyLabel:2,1,0',
+  ), false)
+})
+
+test('削除がない場合は完了通知に階層別を載せない', async () => {
+  resetTabs([
+    { id: 1, windowId: 1, index: 0, active: true, pinned: false, url: 'https://example.com/top', title: 'Top' },
+    { id: 2, windowId: 1, index: 1, active: false, pinned: false, groupId: 10, url: 'https://example.com/group', title: 'Group' },
+  ])
+  state.groups.set(10, { title: '仕事' })
+
+  await run(1, 'url', true)
+
+  const { message } = state.notifications[0].options
+  assert.equal(message.includes('successMessage'), true)
+  assert.equal(message.includes('hierarchyResultHeader'), false)
+  assert.equal(message.includes('hierarchyResultLine'), false)
 })
 
 test('通知作成に失敗しても重複タブを閉じる', async () => {

@@ -7,11 +7,16 @@ import {
   KEY_IGNORE_BOUNDARIES,
   KEY_CLOSING,
   KEY_FAILURE_MESSAGE,
+  KEY_GROUP_HIERARCHY_LABEL,
+  KEY_GROUP_NUMBERED_HIERARCHY_LABEL,
+  KEY_HIERARCHY_RESULT_HEADER,
+  KEY_HIERARCHY_RESULT_LINE,
   KEY_PROGRESS,
   KEY_RESPECT_BOUNDARIES,
   KEY_SUCCESS_MESSAGE,
   KEY_TITLE,
   KEY_TOP_LEVEL_HIERARCHY,
+  KEY_TOP_LEVEL_SCOPE,
   KEY_URL,
   KEY_URL_WITHOUT_HASH,
   NOTIFICATION_PERMISSION,
@@ -219,11 +224,83 @@ function filterTabsByScope (tabList, scope, sourceTab) {
   return tabList.filter((tab) => isSameHierarchy(tab, sourceTab))
 }
 
+function createHierarchyResults (tabList) {
+  const resultByKey = new Map()
+  const results = []
+  let groupNumber = 0
+
+  for (const tab of tabList) {
+    const key = getTabHierarchyKey(tab)
+    let result = resultByKey.get(key)
+    if (!result) {
+      const hierarchy = getTabHierarchy(tab)
+      result = {
+        all: 0,
+        closed: 0,
+        groupId: hierarchy[0] === 'group' ? hierarchy[1] : undefined,
+        groupNumber: hierarchy[0] === 'group' ? ++groupNumber : undefined,
+        key,
+        order: results.length,
+        type: hierarchy[0],
+      }
+      resultByKey.set(key, result)
+      results.push(result)
+    }
+    result.all += 1
+  }
+
+  return {
+    resultByKey,
+    results: results.toSorted((left, right) => {
+      if (left.type === 'topLevel') {
+        return right.type === 'topLevel' ? 0 : -1
+      }
+      if (right.type === 'topLevel') {
+        return 1
+      }
+      return left.order - right.order
+    }),
+  }
+}
+
+async function setGroupTitles (hierarchyResults) {
+  if (typeof browser.tabGroups?.get !== 'function') {
+    return
+  }
+
+  await Promise.all(hierarchyResults.
+    filter((result) => result.groupId !== undefined).
+    map(async (result) => {
+      try {
+        const group = await browser.tabGroups.get(result.groupId)
+        const title = group?.title?.trim()
+        if (title) {
+          result.groupTitle = title
+        }
+      } catch {
+        // Group names are optional in notifications; fall back to numbering.
+      }
+    }))
+}
+
+function countClosedByHierarchy (target, plan, hierarchyResultByKey) {
+  for (const tabId of target) {
+    const tab = plan.idToEntry.get(tabId)?.tab
+    const result = tab && hierarchyResultByKey.get(getTabHierarchyKey(tab))
+    if (result) {
+      result.closed += 1
+    }
+  }
+}
+
 async function closeDuplicateTabs (windowId, keyGetter, scope, sourceTab,
   progress) {
   const allTabs = await tabs.query({ windowId })
   const tabList = filterTabsByScope(allTabs, scope, sourceTab)
   progress.all = tabList.length
+  const { resultByKey, results } = createHierarchyResults(tabList)
+  progress.hierarchyResults = results
+  await setGroupTitles(results)
 
   const plan = createDuplicatePlan(tabList, keyGetter, scope)
   const { removeIds } = plan
@@ -234,6 +311,7 @@ async function closeDuplicateTabs (windowId, keyGetter, scope, sourceTab,
     const target = removeIds.slice(Math.max(0, i - BULK_SIZE), i)
     await keepActiveDuplicateIfPossible(windowId, target, plan, removeIdSet)
 
+    countClosedByHierarchy(target, plan, resultByKey)
     await tabs.remove(target)
     debug('Tabs' + target + ' were closed')
     progress.done += target.length
@@ -264,6 +342,40 @@ function startProgressNotification (progress) {
   }
 }
 
+function getHierarchyLabel (result) {
+  if (result.type === 'topLevel') {
+    return i18n.getMessage(KEY_TOP_LEVEL_SCOPE)
+  }
+
+  if (result.groupTitle) {
+    return i18n.getMessage(KEY_GROUP_HIERARCHY_LABEL, result.groupTitle)
+  }
+
+  return i18n.getMessage(KEY_GROUP_NUMBERED_HIERARCHY_LABEL,
+    result.groupNumber)
+}
+
+function getHierarchyResultMessage (hierarchyResults) {
+  if (!hierarchyResults?.length) {
+    return ''
+  }
+
+  const lines = hierarchyResults.
+    filter((result) => result.closed > 0).
+    map((result) => i18n.getMessage(
+      KEY_HIERARCHY_RESULT_LINE,
+      [getHierarchyLabel(result), result.all, result.closed],
+    ))
+  if (lines.length === 0) {
+    return ''
+  }
+
+  return [
+    i18n.getMessage(KEY_HIERARCHY_RESULT_HEADER),
+    ...lines,
+  ].join('\n')
+}
+
 function getNotificationOptions (progress) {
   let message
   if (progress.error) {
@@ -272,6 +384,11 @@ function getNotificationOptions (progress) {
     const seconds = (progress.end - progress.start) / 1000
     message = i18n.getMessage(KEY_SUCCESS_MESSAGE,
       [seconds, progress.all, progress.done])
+    const hierarchyResultMessage =
+      getHierarchyResultMessage(progress.hierarchyResults)
+    if (hierarchyResultMessage) {
+      message += '\n\n' + hierarchyResultMessage
+    }
   } else if (progress.start && progress.target) {
     const seconds = (new Date() - progress.start) / 1000
     const percentage = Math.floor(progress.done * 100 / progress.target)

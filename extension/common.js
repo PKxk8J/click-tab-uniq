@@ -39,6 +39,10 @@ export const KEY_CLOSING = 'closing'
 export const KEY_PROGRESS = 'progress'
 export const KEY_SUCCESS_MESSAGE = 'successMessage'
 export const KEY_FAILURE_MESSAGE = 'failureMessage'
+export const KEY_HIERARCHY_RESULT_HEADER = 'hierarchyResultHeader'
+export const KEY_HIERARCHY_RESULT_LINE = 'hierarchyResultLine'
+export const KEY_GROUP_HIERARCHY_LABEL = 'groupHierarchyLabel'
+export const KEY_GROUP_NUMBERED_HIERARCHY_LABEL = 'groupNumberedHierarchyLabel'
 
 export const ALL_CONTEXTS = [KEY_TAB, KEY_ALL]
 export const DEFAULT_CONTEXTS = [KEY_TAB]
