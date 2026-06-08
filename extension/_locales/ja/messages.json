@@ -105,11 +105,8 @@
       }
     }
   },
-  "hierarchyResultHeader": {
-    "message": "階層別:"
-  },
   "hierarchyResultLine": {
-    "message": "$NAME$ $CLOSED$個",
+    "message": "$NAME$: $CLOSED$個",
     "placeholders": {
       "name": {
         "content": "$1"
