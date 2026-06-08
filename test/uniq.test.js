@@ -225,8 +225,11 @@ test('update API がなくても重複タブを閉じて通知を送る', async 
   assert.equal(state.notifications[0].options.title, 'ClickTabUniq')
   assert.equal(state.notifications[0].options.message.includes('successMessage'), true)
   assert.equal(state.notifications[0].options.message.includes(
-    'hierarchyResultHeader hierarchyResultLine:topLevelScope,1',
+    '\nhierarchyResultLine:topLevelScope,1',
   ), true)
+  assert.equal(state.notifications[0].options.message.includes(
+    'hierarchyResultHeader',
+  ), false)
 })
 
 test('完了通知に階層ごとの結果を1行で載せる', async () => {
@@ -245,9 +248,9 @@ test('完了通知に階層ごとの結果を1行で載せる', async () => {
   await run(1, 'url', true)
 
   const { message } = state.notifications[0].options
-  assert.equal(message.includes('\n\nhierarchyResultHeader'), false)
+  assert.equal(message.includes('hierarchyResultHeader'), false)
   assert.equal(message.includes(
-    'hierarchyResultHeader hierarchyResultLine:topLevelScope,1 / ' +
+    '\nhierarchyResultLine:topLevelScope,1 / ' +
       'hierarchyResultLine:groupHierarchyLabel:仕事,1 / ' +
       'hierarchyResultLine:groupNumberedHierarchyLabel:2,1',
   ), true)

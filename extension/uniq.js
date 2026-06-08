@@ -9,7 +9,6 @@ import {
   KEY_FAILURE_MESSAGE,
   KEY_GROUP_HIERARCHY_LABEL,
   KEY_GROUP_NUMBERED_HIERARCHY_LABEL,
-  KEY_HIERARCHY_RESULT_HEADER,
   KEY_HIERARCHY_RESULT_LINE,
   KEY_PROGRESS,
   KEY_RESPECT_BOUNDARIES,
@@ -382,8 +381,7 @@ function getHierarchyResultMessage (hierarchyResults) {
     return ''
   }
 
-  return i18n.getMessage(KEY_HIERARCHY_RESULT_HEADER) + ' ' +
-    lines.join(' / ')
+  return lines.join(' / ')
 }
 
 function getNotificationOptions (progress) {
