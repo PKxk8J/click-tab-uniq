@@ -225,33 +225,34 @@ test('update API がなくても重複タブを閉じて通知を送る', async 
   assert.equal(state.notifications[0].options.title, 'ClickTabUniq')
   assert.equal(state.notifications[0].options.message.includes('successMessage'), true)
   assert.equal(state.notifications[0].options.message.includes(
-    'hierarchyResultLine:topLevelScope,2,1',
+    'hierarchyResultHeader hierarchyResultLine:topLevelScope,1',
   ), true)
 })
 
-test('完了通知に階層ごとの結果を載せる', async () => {
+test('完了通知に階層ごとの結果を1行で載せる', async () => {
   resetTabs([
     { id: 1, windowId: 1, index: 0, active: false, pinned: false, url: 'https://example.com/top', title: 'Top' },
     { id: 2, windowId: 1, index: 1, active: true, pinned: false, url: 'https://example.com/top', title: 'Top' },
     { id: 3, windowId: 1, index: 2, active: false, pinned: false, url: 'https://example.com/unique-top', title: 'Unique Top' },
     { id: 4, windowId: 1, index: 3, active: false, pinned: false, groupId: 10, url: 'https://example.com/group', title: 'Group' },
     { id: 5, windowId: 1, index: 4, active: false, pinned: false, groupId: 10, url: 'https://example.com/group', title: 'Group' },
-    { id: 6, windowId: 1, index: 5, active: false, pinned: false, groupId: 20, url: 'https://example.com/unique-group', title: 'Unique Group' },
+    { id: 6, windowId: 1, index: 5, active: false, pinned: false, groupId: 20, url: 'https://example.com/unnamed-group', title: 'Unnamed Group' },
+    { id: 7, windowId: 1, index: 6, active: false, pinned: false, groupId: 20, url: 'https://example.com/unnamed-group', title: 'Unnamed Group' },
+    { id: 8, windowId: 1, index: 7, active: false, pinned: false, groupId: 30, url: 'https://example.com/unique-group', title: 'Unique Group' },
   ])
   state.groups.set(10, { title: '仕事' })
 
   await run(1, 'url', true)
 
   const { message } = state.notifications[0].options
-  assert.equal(message.includes('hierarchyResultHeader'), true)
+  assert.equal(message.includes('\n\nhierarchyResultHeader'), false)
   assert.equal(message.includes(
-    'hierarchyResultLine:topLevelScope,3,1',
+    'hierarchyResultHeader hierarchyResultLine:topLevelScope,1 / ' +
+      'hierarchyResultLine:groupHierarchyLabel:仕事,1 / ' +
+      'hierarchyResultLine:groupNumberedHierarchyLabel:2,1',
   ), true)
   assert.equal(message.includes(
-    'hierarchyResultLine:groupHierarchyLabel:仕事,2,1',
-  ), true)
-  assert.equal(message.includes(
-    'hierarchyResultLine:groupNumberedHierarchyLabel:2,1,0',
+    'groupNumberedHierarchyLabel:3',
   ), false)
 })
 

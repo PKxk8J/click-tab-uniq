@@ -113,21 +113,18 @@
     "message": "By hierarchy:"
   },
   "hierarchyResultLine": {
-    "message": "$NAME$: $CLOSED$ of $ALL$ tabs closed.",
+    "message": "$NAME$ $CLOSED$",
     "placeholders": {
       "name": {
         "content": "$1"
       },
-      "all": {
-        "content": "$2"
-      },
       "closed": {
-        "content": "$3"
+        "content": "$2"
       }
     }
   },
   "groupHierarchyLabel": {
-    "message": "Group \"$1\""
+    "message": "$1"
   },
   "groupNumberedHierarchyLabel": {
     "message": "Group $1"
