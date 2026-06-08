@@ -376,16 +376,14 @@ function getHierarchyResultMessage (hierarchyResults) {
     filter((result) => result.closed > 0).
     map((result) => i18n.getMessage(
       KEY_HIERARCHY_RESULT_LINE,
-      [getHierarchyLabel(result), result.all, result.closed],
+      [getHierarchyLabel(result), result.closed],
     ))
   if (lines.length === 0) {
     return ''
   }
 
-  return [
-    i18n.getMessage(KEY_HIERARCHY_RESULT_HEADER),
-    ...lines,
-  ].join('\n')
+  return i18n.getMessage(KEY_HIERARCHY_RESULT_HEADER) + ' ' +
+    lines.join(' / ')
 }
 
 function getNotificationOptions (progress) {
@@ -399,7 +397,7 @@ function getNotificationOptions (progress) {
     const hierarchyResultMessage =
       getHierarchyResultMessage(progress.hierarchyResults)
     if (hierarchyResultMessage) {
-      message += '\n\n' + hierarchyResultMessage
+      message += '\n' + hierarchyResultMessage
     }
   } else if (progress.start && progress.target) {
     const seconds = (new Date() - progress.start) / 1000
