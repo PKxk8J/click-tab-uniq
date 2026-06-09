@@ -260,4 +260,191 @@ describe('Firefox extension E2E', () => {
     assert.equal(result.remainingTabIds.includes(result.uniqueTabId), true)
     assert.equal(result.remainingTabIds.includes(result.closedTabId), false)
   })
+
+  test('run closes duplicate tabs by URL without hash in Firefox', async () => {
+    await openFreshOptionsPage()
+
+    const result = await runExtensionScript(`
+      const { run } = await import(browser.runtime.getURL('uniq.js'))
+      const token = 'click-tab-uniq-e2e-' + Date.now() + '-' + Math.random()
+      const duplicateBaseUrl = 'https://example.com/?' + token
+      const uniqueUrl = 'https://example.org/?' + token + '#first'
+      const createdTabs = []
+
+      try {
+        createdTabs.push(await browser.tabs.create({
+          active: false,
+          url: duplicateBaseUrl + '#first',
+        }))
+        createdTabs.push(await browser.tabs.create({
+          active: false,
+          url: duplicateBaseUrl + '#second',
+        }))
+        createdTabs.push(await browser.tabs.create({
+          active: false,
+          url: uniqueUrl,
+        }))
+
+        const sourceWindowId = createdTabs[0].windowId
+        const ready = await waitUntil(async () => {
+          const tabs = []
+          for (const tab of createdTabs) {
+            tabs.push(await browser.tabs.get(tab.id).catch(() => null))
+          }
+          return tabs.every(tab =>
+            tab?.url === duplicateBaseUrl + '#first' ||
+            tab?.url === duplicateBaseUrl + '#second' ||
+            tab?.url === uniqueUrl)
+        })
+        if (!ready) {
+          throw new Error('created tab URLs did not settle')
+        }
+
+        await run(sourceWindowId, 'urlWithoutHash', false)
+
+        const remaining = await waitUntil(async () => {
+          const tabs = await browser.tabs.query({
+            windowId: sourceWindowId,
+          })
+          const tabIds = new Set(tabs.map(tab => tab.id))
+          if (tabIds.has(createdTabs[0].id) &&
+              !tabIds.has(createdTabs[1].id) &&
+              tabIds.has(createdTabs[2].id)) {
+            return tabs.filter(tab =>
+              createdTabs.some(created => created.id === tab.id))
+          }
+        })
+        if (!remaining) {
+          throw new Error('hash-only duplicate tab was not closed')
+        }
+
+        return {
+          closedTabId: createdTabs[1].id,
+          remainingTabIds: remaining.map(tab => tab.id),
+          survivorTabId: createdTabs[0].id,
+          uniqueTabId: createdTabs[2].id,
+        }
+      } finally {
+        for (const tab of createdTabs) {
+          await browser.tabs.remove(tab.id).catch(() => {})
+        }
+      }
+    `)
+
+    assert.equal(result.remainingTabIds.includes(result.survivorTabId), true)
+    assert.equal(result.remainingTabIds.includes(result.uniqueTabId), true)
+    assert.equal(result.remainingTabIds.includes(result.closedTabId), false)
+  })
+
+  test('run closes duplicate tabs across tab groups with allTabs scope in Firefox',
+    async (t) => {
+      await openFreshOptionsPage()
+
+      const canGroupTabs = await runExtensionScript(`
+        return typeof browser.tabs.group === 'function'
+      `)
+      if (!canGroupTabs) {
+        t.skip('browser.tabs.group is unavailable in this Firefox build')
+        return
+      }
+
+      const result = await runExtensionScript(`
+        const { countDuplicateTabs, run } =
+          await import(browser.runtime.getURL('uniq.js'))
+        const token = 'click-tab-uniq-e2e-' + Date.now() + '-' + Math.random()
+        const duplicateUrl = 'https://example.com/?' + token
+        const uniqueUrl = 'https://example.org/?' + token
+        const createdTabs = []
+
+        try {
+          createdTabs.push(await browser.tabs.create({
+            active: false,
+            url: duplicateUrl,
+          }))
+          createdTabs.push(await browser.tabs.create({
+            active: false,
+            url: duplicateUrl,
+          }))
+          createdTabs.push(await browser.tabs.create({
+            active: false,
+            url: uniqueUrl,
+          }))
+
+          const sourceWindowId = createdTabs[0].windowId
+          const ready = await waitUntil(async () => {
+            const tabs = []
+            for (const tab of createdTabs) {
+              tabs.push(await browser.tabs.get(tab.id).catch(() => null))
+            }
+            return tabs.every(tab =>
+              tab?.url === duplicateUrl || tab?.url === uniqueUrl)
+          })
+          if (!ready) {
+            throw new Error('created tab URLs did not settle')
+          }
+
+          await browser.tabs.group({ tabIds: [createdTabs[1].id] })
+
+          const noGroupId =
+            browser.tabGroups?.TAB_GROUP_ID_NONE ??
+            browser.tabs.TAB_GROUP_ID_NONE ??
+            -1
+          const sourceTab = await browser.tabs.get(createdTabs[0].id)
+          const groupedTab = await browser.tabs.get(createdTabs[1].id)
+          const uniqueTab = await browser.tabs.get(createdTabs[2].id)
+          if (groupedTab.groupId === undefined ||
+              groupedTab.groupId === noGroupId) {
+            return { skipped: 'tab group could not be created' }
+          }
+
+          const eachHierarchyCount = countDuplicateTabs(
+            [sourceTab, groupedTab, uniqueTab],
+            'url',
+            'eachHierarchy',
+            sourceTab,
+          )
+          if (eachHierarchyCount !== 0) {
+            throw new Error('test setup did not create separate hierarchies')
+          }
+
+          await run(sourceWindowId, 'url', false, 'allTabs', sourceTab)
+
+          const remaining = await waitUntil(async () => {
+            const tabs = await browser.tabs.query({
+              windowId: sourceWindowId,
+            })
+            const tabIds = new Set(tabs.map(tab => tab.id))
+            if (tabIds.has(createdTabs[0].id) &&
+                !tabIds.has(createdTabs[1].id) &&
+                tabIds.has(createdTabs[2].id)) {
+              return tabs.filter(tab =>
+                createdTabs.some(created => created.id === tab.id))
+            }
+          })
+          if (!remaining) {
+            throw new Error('cross-group duplicate tab was not closed')
+          }
+
+          return {
+            closedTabId: createdTabs[1].id,
+            remainingTabIds: remaining.map(tab => tab.id),
+            survivorTabId: createdTabs[0].id,
+            uniqueTabId: createdTabs[2].id,
+          }
+        } finally {
+          for (const tab of createdTabs) {
+            await browser.tabs.remove(tab.id).catch(() => {})
+          }
+        }
+      `)
+
+      if (result.skipped) {
+        t.skip(result.skipped)
+        return
+      }
+
+      assert.equal(result.remainingTabIds.includes(result.survivorTabId), true)
+      assert.equal(result.remainingTabIds.includes(result.uniqueTabId), true)
+      assert.equal(result.remainingTabIds.includes(result.closedTabId), false)
+    })
 })
