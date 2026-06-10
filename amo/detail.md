@@ -24,6 +24,8 @@ Top-level cleanup only checks top-level tabs, so duplicates inside groups are le
 When you right-click a tab in a group, you can also close duplicates within that group only.
 Split view tabs are included in duplicate detection and cleanup.
 
+If only one duplicate detection method or cleanup scope is available, the right-click menu is streamlined so you can run the action in fewer steps.
+
 Optional notifications can show progress, the final result, and how many tabs were closed in each hierarchy.
 
 ## Privacy
