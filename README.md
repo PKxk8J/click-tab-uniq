@@ -1,6 +1,6 @@
 # click-tab-uniq
 
-タブ右クリックから重複するタブを削除する Firefox 専用アドオン。
+右クリックから重複するタブを削除する Firefox 専用アドオン。
 
 https://addons.mozilla.org/addon/clicktabuniq/
 

@@ -1,10 +1,10 @@
 ## Summary
 
-Close duplicate tabs from the right-click menu.
+When too many tabs leave the same page open more than once, check the count first and close duplicates easily.
 
 ## Description
 
-ClickTabUniq closes duplicate tabs directly from Firefox's right-click menu.
+ClickTabUniq is a Firefox extension for closing duplicate tabs from the right-click menu when the same page is open in multiple tabs. The menu shows how many tabs will be closed before you run an action, so you can understand the impact first.
 
 Choose how duplicates are detected:
 
@@ -12,23 +12,20 @@ Choose how duplicates are detected:
 - URL without hash
 - Title
 
-For each duplicate detection method, choose the cleanup scope:
+For each duplicate detection method, you can also choose the cleanup scope:
 
 - The clicked hierarchy
 - Each hierarchy
 - All tabs
 
-Menu items show how many duplicate tabs will be closed before you choose an
-action.
-
 Hierarchies are top-level tabs and each tab group.
-Pinned tabs are treated as top-level tabs and are preferred over regular tabs
-when choosing which duplicate survives.
-When you right-click a tab in a group, the menu can also offer the top-level
-cleanup scope. Choosing that top-level scope only checks top-level tabs, so
-duplicates inside the clicked group stay untouched unless you choose the group
-scope.
+Pinned tabs are treated as top-level tabs and are preferred over regular tabs when choosing which duplicate survives.
+Top-level cleanup only checks top-level tabs, so duplicates inside groups are left untouched.
+When you right-click a tab in a group, you can also close duplicates within that group only.
 Split view tabs are included in duplicate detection and cleanup.
 
-Optional notifications can show progress, the final result, and how many tabs
-were closed in each hierarchy.
+Optional notifications can show progress, the final result, and how many tabs were closed in each hierarchy.
+
+## Privacy
+
+ClickTabUniq uses tab access to compare tab URLs and titles. It does not collect or send browsing data.
