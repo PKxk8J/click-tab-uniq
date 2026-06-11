@@ -1,8 +1,8 @@
-## Summary
+# Summary
 
 When too many tabs leave the same page open more than once, check the count first and close duplicates easily.
 
-## Description
+# Description
 
 ClickTabUniq is a Firefox extension for closing duplicate tabs from the right-click menu when the same page is open in multiple tabs. The menu shows how many tabs will be closed before you run an action, so you can understand the impact first.
 
