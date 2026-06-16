@@ -33,6 +33,7 @@ npm install
 npm run lint
 npm run test
 npm run test:perf
+npm run screenshots:amo
 npm run build
 ```
 
@@ -42,6 +43,15 @@ npm run build
 
 アドオンのバージョンは `extension/manifest.json` で管理します。
 `npm run build` は `web-ext-artifacts/clicktabuniq-<version>.zip` を作成します。
+
+`npm run screenshots:amo` は `amo/en` と `amo/ja` の AMO 用スクリーンショットを
+生成します。対象を絞る場合は PowerShell で次のように指定できます。
+
+```powershell
+$env:AMO_LOCALES = 'ja'
+$env:AMO_SCREENSHOTS = 'settings'
+npm run screenshots:amo
+```
 
 `npm run run` は、この拡張機能を一時的に読み込んだ Firefox を起動します。
 拡張機能のソースは `extension/` にあります。
