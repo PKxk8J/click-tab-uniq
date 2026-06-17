@@ -1,10 +1,10 @@
 # Summary
 
-Close duplicate tabs from the right-click menu.
+When too many tabs leave the same page open more than once, check the count first and close duplicates easily.
 
 # Description
 
-ClickTabUniq closes duplicate tabs directly from Firefox's right-click menu.
+ClickTabUniq is a Firefox extension for closing duplicate tabs from the right-click menu when the same page is open in multiple tabs. The menu shows how many tabs will be closed before you run an action, so you can understand the impact first.
 
 Choose how duplicates are detected:
 
@@ -18,22 +18,21 @@ For each duplicate detection method, choose the cleanup scope:
 - Top-level tabs and each group separately
 - All tabs
 
-Menu items show how many duplicate tabs will be closed before you choose an
-action.
-
 Top-level tabs and each tab group are treated as separate cleanup areas.
 Pinned tabs are treated as top-level tabs and are preferred over regular tabs
 when choosing which duplicate survives.
-When you right-click a tab in a group, the menu can also offer the top-level
-cleanup scope. Choosing that top-level scope only checks top-level tabs, so
-duplicates inside the clicked group stay untouched unless you choose the group
-scope.
+When you right-click a tab in a group, you can choose the clicked group by
+itself or the top-level cleanup scope.
+Top-level cleanup only checks top-level tabs, so duplicates inside the clicked
+group stay untouched unless you choose the group scope.
 Split view tabs are included in duplicate detection and cleanup.
+
+If only one duplicate detection method or cleanup scope is available, the
+right-click menu is streamlined so you can run the action in fewer steps.
 
 Optional notifications can show progress, the final result, and how many tabs
 were closed for top-level tabs and each group.
 
 ## Privacy
 
-ClickTabUniq uses tab access to detect and close duplicate tabs.
-It does not collect or send browsing data.
+ClickTabUniq uses tab access to compare tab URLs and titles. It does not collect or send browsing data.
