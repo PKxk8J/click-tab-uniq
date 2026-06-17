@@ -25,4 +25,31 @@ export default [
       semi: ['error', 'never'],
     },
   },
+  {
+    files: ['tools/**/*.js'],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: 'module',
+      globals: {
+        console: 'readonly',
+      },
+    },
+    rules: {
+      semi: ['error', 'never'],
+    },
+  },
+  {
+    files: ['test/**/*.js'],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: 'module',
+      globals: {
+        console: 'readonly',
+        globalThis: 'readonly',
+      },
+    },
+    rules: {
+      semi: ['error', 'never'],
+    },
+  },
 ]

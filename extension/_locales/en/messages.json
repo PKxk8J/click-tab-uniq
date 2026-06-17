@@ -37,25 +37,25 @@
     "message": "Ignore boundaries"
   },
   "currentHierarchy": {
-    "message": "Detect within the clicked hierarchy"
+    "message": "Detect within the clicked group or top-level tabs"
   },
   "eachHierarchy": {
-    "message": "Detect separately for each hierarchy"
+    "message": "Detect separately for top-level tabs and each group"
   },
   "allTabs": {
     "message": "Detect across all tabs"
   },
   "hierarchyDescription": {
-    "message": "Hierarchy types: top-level and groups"
+    "message": "Choose the cleanup scope for each duplicate detection method."
   },
   "topLevelScope": {
-    "message": "Top Level"
+    "message": "Top-Level Tabs"
   },
   "groupScope": {
-    "message": "In Group"
+    "message": "Clicked Group"
   },
   "eachHierarchyMenu": {
-    "message": "Top Level and Each Group"
+    "message": "Top-Level Tabs and Each Group"
   },
   "allTabsMenu": {
     "message": "All Tabs"

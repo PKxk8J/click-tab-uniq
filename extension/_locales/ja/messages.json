@@ -33,25 +33,25 @@
     "message": "グループ等を無視する"
   },
   "currentHierarchy": {
-    "message": "クリックした階層内で判定"
+    "message": "クリックしたグループまたはトップレベル内で判定"
   },
   "eachHierarchy": {
-    "message": "全ての階層に対して階層ごとに判定"
+    "message": "トップレベルと各グループを分けて判定"
   },
   "allTabs": {
     "message": "全てのタブから判定"
   },
   "hierarchyDescription": {
-    "message": "階層の種類: トップレベル / グループ"
+    "message": "判定方法ごとに、削除対象の範囲を選べます。"
   },
   "topLevelScope": {
-    "message": "トップレベル"
+    "message": "トップレベルのタブ"
   },
   "groupScope": {
-    "message": "グループ内"
+    "message": "クリックしたグループ"
   },
   "eachHierarchyMenu": {
-    "message": "トップレベルおよびグループごと"
+    "message": "トップレベルのタブと各グループ"
   },
   "allTabsMenu": {
     "message": "全てのタブ"
