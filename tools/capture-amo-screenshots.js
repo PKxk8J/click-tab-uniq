@@ -1,7 +1,7 @@
 import process from 'node:process'
 import { Buffer } from 'node:buffer'
 import { execFile } from 'node:child_process'
-import { mkdir, readFile, writeFile } from 'node:fs/promises'
+import { mkdir, writeFile } from 'node:fs/promises'
 import { statSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -21,6 +21,7 @@ const execFileAsync = promisify(execFile)
 const ROOT_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const EXTENSION_DIR = resolve(ROOT_DIR, 'extension')
 const AMO_ROOT_DIR = resolve(ROOT_DIR, 'amo')
+const AMO_SCREENSHOT_DIR = resolve(AMO_ROOT_DIR, 'en')
 const WAIT_MS = Number(process.env.AMO_WAIT_MS || 15_000)
 
 const SCREENSHOT_FILENAMES = {
@@ -37,47 +38,24 @@ const DEFAULT_TARGETS = [
   'notification',
 ]
 
-const LOCALES = {
-  en: {
-    extensionLocale: 'en',
-    firefoxLocale: 'en-US',
-    labels: {
-      uniq: 'Close Duplicate Tabs',
-      url: 'URL',
-    },
-    tabs: {
-      fullGroupDuplicate: 'Grouped duplicate tab',
-      fullTopDuplicate: 'Top-level duplicate tab',
-      notificationDuplicate: 'Notification duplicate tab',
-      notificationReference: 'Notification reference tab',
-      notificationUnique: 'Notification unique tab',
-      shallowDuplicate: 'Shallow duplicate tab',
-    },
+const SCREENSHOT_LOCALE = {
+  firefoxLocale: 'en-US',
+  labels: {
+    uniq: 'Close Duplicate Tabs',
+    url: 'URL',
   },
-  ja: {
-    extensionLocale: 'ja',
-    firefoxLocale: 'ja',
-    labels: {
-      uniq: '重複タブ削除',
-      url: 'URL',
-    },
-    tabs: {
-      fullGroupDuplicate: 'グループ内の重複タブ',
-      fullTopDuplicate: 'トップレベルの重複タブ',
-      notificationDuplicate: '通知用の重複タブ',
-      notificationReference: '通知用の参照タブ',
-      notificationUnique: '通知用の単独タブ',
-      shallowDuplicate: '浅いメニュー用の重複タブ',
-    },
+  tabs: {
+    fullGroupDuplicate: 'Grouped duplicate tab',
+    fullTopDuplicate: 'Top-level duplicate tab',
+    notificationDuplicate: 'Notification duplicate tab',
+    notificationReference: 'Notification reference tab',
+    notificationUnique: 'Notification unique tab',
+    shallowDuplicate: 'Shallow duplicate tab',
   },
 }
 
-const DEFAULT_LOCALES = Object.keys(LOCALES)
-
 let driver
 let extensionBaseUrl
-let activeLocale
-let activeOutputDir
 
 async function runPowerShell (command, env = {}) {
   const encodedCommand = Buffer.from(command, 'utf16le').toString('base64')
@@ -103,7 +81,7 @@ function pageUrl (title, scenario) {
 }
 
 function screenshotPath (key) {
-  return resolve(activeOutputDir, SCREENSHOT_FILENAMES[key])
+  return resolve(AMO_SCREENSHOT_DIR, SCREENSHOT_FILENAMES[key])
 }
 
 function parseCrop (name, fallback) {
@@ -138,7 +116,7 @@ async function createDriver () {
   const geckoDriverPath = process.env.GECKODRIVER_PATH || await download()
   const options = new firefox.Options()
   options.addArguments('-remote-allow-system-access')
-  options.setPreference('intl.locale.requested', activeLocale.firefoxLocale)
+  options.setPreference('intl.locale.requested', SCREENSHOT_LOCALE.firefoxLocale)
   options.setPreference('layout.css.prefers-color-scheme.content-override', 0)
   options.setPreference('ui.systemUsesDarkTheme', 1)
 
@@ -162,7 +140,6 @@ async function installAddon ({ allowPrivateBrowsing = false } = {}) {
   if (stats.isDirectory()) {
     const zip = new Zip()
     await zip.addDir(EXTENSION_DIR)
-    await addForcedDefaultLocale(zip)
     zip.z_.file('screenshot-tab.html', `
       <!doctype html>
       <html>
@@ -204,13 +181,6 @@ async function installAddon ({ allowPrivateBrowsing = false } = {}) {
       setParameter('temporary', true).
       setParameter('allowPrivateBrowsing', allowPrivateBrowsing),
   )
-}
-
-async function addForcedDefaultLocale (zip) {
-  const messagesPath = resolve(EXTENSION_DIR, '_locales',
-    activeLocale.extensionLocale, 'messages.json')
-  const messages = await readFile(messagesPath)
-  zip.z_.file('_locales/en/messages.json', messages)
 }
 
 async function getExtensionBaseUrl (addonId) {
@@ -658,8 +628,8 @@ async function prepareMenuCapture ({ shallow }) {
   })
 
   const sourceUrl = shallow
-    ? pageUrl(activeLocale.tabs.shallowDuplicate, 'shallow')
-    : pageUrl(activeLocale.tabs.fullGroupDuplicate, 'full-group')
+    ? pageUrl(SCREENSHOT_LOCALE.tabs.shallowDuplicate, 'shallow')
+    : pageUrl(SCREENSHOT_LOCALE.tabs.fullGroupDuplicate, 'full-group')
   await driver.get(sourceUrl)
 
   return await runExtensionScript(`
@@ -715,7 +685,7 @@ async function prepareMenuCapture ({ shallow }) {
   `, {
     shallow,
     sourceUrl,
-    topUrl: pageUrl(activeLocale.tabs.fullTopDuplicate, 'full-top'),
+    topUrl: pageUrl(SCREENSHOT_LOCALE.tabs.fullTopDuplicate, 'full-top'),
   })
 }
 
@@ -747,15 +717,18 @@ async function captureMenuScreenshot ({ shallow, path, cropName, fallbackCrop })
     })
     await driver.sleep(500)
     const topMatcher = shallow
-      ? createLabelMatcher({ prefix: activeLocale.labels.uniq + ': ' })
-      : createLabelMatcher({ exact: activeLocale.labels.uniq, last: true })
+      ? createLabelMatcher({ prefix: SCREENSHOT_LOCALE.labels.uniq + ': ' })
+      : createLabelMatcher({
+          exact: SCREENSHOT_LOCALE.labels.uniq,
+          last: true,
+        })
 
     await closeChromeMenus()
     await openSelectedTabContextMenu()
     await hoverChromeMenuItem(topMatcher)
     if (!shallow) {
       await hoverChromeMenuItem(createLabelMatcher({
-        exact: activeLocale.labels.url,
+        exact: SCREENSHOT_LOCALE.labels.url,
       }))
     }
     await driver.sleep(800)
@@ -856,15 +829,15 @@ async function captureNotificationScreenshot () {
     }
   `, {
     duplicateUrl: pageUrl(
-      activeLocale.tabs.notificationDuplicate,
+      SCREENSHOT_LOCALE.tabs.notificationDuplicate,
       'notification-duplicate',
     ),
     referenceUrl: pageUrl(
-      activeLocale.tabs.notificationReference,
+      SCREENSHOT_LOCALE.tabs.notificationReference,
       'notification-reference',
     ),
     uniqueUrl: pageUrl(
-      activeLocale.tabs.notificationUnique,
+      SCREENSHOT_LOCALE.tabs.notificationUnique,
       'notification-unique',
     ),
   })
@@ -875,20 +848,14 @@ async function captureNotificationScreenshot () {
 
 async function main () {
   const targets = getRequestedTargets()
-  const locales = getRequestedLocales()
   await mkdir(AMO_ROOT_DIR, { recursive: true })
-
-  for (const localeId of locales) {
-    await captureLocale(localeId, targets)
-  }
+  await captureScreenshots(targets)
 }
 
-async function captureLocale (localeId, targets) {
-  activeLocale = LOCALES[localeId]
-  activeOutputDir = resolve(AMO_ROOT_DIR, localeId)
-  await mkdir(activeOutputDir, { recursive: true })
+async function captureScreenshots (targets) {
+  await mkdir(AMO_SCREENSHOT_DIR, { recursive: true })
 
-  console.log('Locale ' + localeId)
+  console.log('Capturing AMO screenshots')
   driver = await createDriver()
   try {
     const addonId = await installAddon({ allowPrivateBrowsing: true })
@@ -936,25 +903,6 @@ function getRequestedTargets () {
       unsupportedTargets.join(', '))
   }
   return new Set(targets)
-}
-
-function getRequestedLocales () {
-  const rawLocales = process.env.AMO_LOCALES || process.env.AMO_LOCALE
-  if (!rawLocales) {
-    return DEFAULT_LOCALES
-  }
-
-  const locales = rawLocales.
-    split(',').
-    map((locale) => locale.trim()).
-    filter((locale) => locale.length > 0)
-  const unsupportedLocales = locales.filter((locale) =>
-    !Object.hasOwn(LOCALES, locale))
-  if (unsupportedLocales.length > 0) {
-    throw new Error('Unsupported AMO_LOCALES locale: ' +
-      unsupportedLocales.join(', '))
-  }
-  return locales
 }
 
 async function runIfRequested (targets, target, run) {

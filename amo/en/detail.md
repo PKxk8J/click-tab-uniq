@@ -36,3 +36,10 @@ were closed for top-level tabs and each group.
 ## Privacy
 
 ClickTabUniq uses tab access to compare tab URLs and titles. It does not collect or send browsing data.
+
+# Captions
+
+- screenshot1_menu_item.png: Preview duplicate counts in the tab context menu before closing anything.
+- screenshot2_shallow_menu_item.png: Run the cleanup faster with a streamlined menu when only one action is available.
+- screenshot3_notification.png: Optional notifications summarize the duplicate tabs that were closed.
+- screenshot4_settings.png: Choose detection methods, cleanup scopes, menu contexts, and notifications from the settings page.
