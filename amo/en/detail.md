@@ -14,14 +14,14 @@ Choose how duplicates are detected:
 
 For each duplicate detection method, choose the cleanup scope:
 
-- The clicked hierarchy
-- Each hierarchy
+- The clicked group or top-level tabs
+- Top-level tabs and each group separately
 - All tabs
 
 Menu items show how many duplicate tabs will be closed before you choose an
 action.
 
-Hierarchies are top-level tabs and each tab group.
+Top-level tabs and each tab group are treated as separate cleanup areas.
 Pinned tabs are treated as top-level tabs and are preferred over regular tabs
 when choosing which duplicate survives.
 When you right-click a tab in a group, the menu can also offer the top-level
@@ -31,7 +31,7 @@ scope.
 Split view tabs are included in duplicate detection and cleanup.
 
 Optional notifications can show progress, the final result, and how many tabs
-were closed in each hierarchy.
+were closed for top-level tabs and each group.
 
 ## Privacy
 
