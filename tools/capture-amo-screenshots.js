@@ -115,7 +115,6 @@ async function writePng (path, base64) {
 async function createDriver () {
   const geckoDriverPath = process.env.GECKODRIVER_PATH || await download()
   const options = new firefox.Options()
-  options.addArguments('-remote-allow-system-access')
   options.setPreference('intl.locale.requested', SCREENSHOT_LOCALE.firefoxLocale)
   options.setPreference('layout.css.prefers-color-scheme.content-override', 0)
   options.setPreference('ui.systemUsesDarkTheme', 1)
@@ -130,7 +129,10 @@ async function createDriver () {
   return new Builder().
     forBrowser('firefox').
     setFirefoxOptions(options).
-    setFirefoxService(new firefox.ServiceBuilder(geckoDriverPath)).
+    setFirefoxService(
+      new firefox.ServiceBuilder(geckoDriverPath).
+        addArguments('--allow-system-access'),
+    ).
     build()
 }
 
@@ -518,7 +520,7 @@ async function hoverChromeMenuItem (matcher) {
   } catch (error) {
     const labels = await getVisibleChromeMenuLabels().catch(() => [])
     throw new Error(error.message + '; visible menu labels: ' +
-      JSON.stringify(labels))
+      JSON.stringify(labels), { cause: error })
   } finally {
     await driver.setContext(firefox.Context.CONTENT)
   }
