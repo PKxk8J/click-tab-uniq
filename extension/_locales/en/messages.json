@@ -60,6 +60,15 @@
   "allTabsMenu": {
     "message": "All Tabs"
   },
+  "menuCloseNoTabs": {
+    "message": "No tabs to close"
+  },
+  "menuCloseOneTab": {
+    "message": "Close 1 tab"
+  },
+  "menuCloseTabs": {
+    "message": "Close $1 tabs"
+  },
   "notification": {
     "message": "Notification"
   },

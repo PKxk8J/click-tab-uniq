@@ -217,6 +217,7 @@ function getAllChildIds (parentId) {
 
 test('ロード時にメニューを復元する', async () => {
   assert.ok(state.menuItems.has('uniq'))
+  assert.equal(state.menuItems.get('uniq').title, 'uniq (&Z)')
   assert.notEqual(state.menuItems.get('uniq').visible, false)
   assert.equal(state.menuItems.get('uniq:action').visible, false)
   assert.deepEqual(getAllChildIds('uniq'), [
@@ -253,7 +254,7 @@ test('表示処理は進行中のメニュー復元完了を待つ', async () =>
   assert.equal(state.menuItems.get('uniq').visible, false)
   assert.equal(state.menuItems.get('uniq:action').visible, true)
   assert.equal(state.menuItems.get('uniq:action').title,
-    'uniq: title: topLevelScope')
+    'uniq: title: topLevelScope (&Z)')
   assert.equal(state.refreshCount, 1)
 })
 
@@ -289,7 +290,7 @@ test('判定キーが1つだけの場合はルートに判定キー名を含め�
   await rebuildMenu()
   await showMenu(1)
 
-  assert.equal(state.menuItems.get('uniq').title, 'uniq: url')
+  assert.equal(state.menuItems.get('uniq').title, 'uniq: url (&Z)')
   assert.deepEqual(getChildIds('uniq'), [
     'scope:url:currentHierarchy',
     'scope:url:eachHierarchy',
@@ -297,15 +298,15 @@ test('判定キーが1つだけの場合はルートに判定キー名を含め�
   ])
   assert.equal(
     state.menuItems.get('scope:url:currentHierarchy').title,
-    'topLevelScope',
+    'topLevelScope (&L)',
   )
   assert.equal(
     state.menuItems.get('scope:url:eachHierarchy').title,
-    'eachHierarchyMenu',
+    'eachHierarchyMenu (&E)',
   )
   assert.equal(
     state.menuItems.get('scope:url:allTabs').title,
-    'allTabsMenu',
+    'allTabsMenu (&A)',
   )
   assert.equal(state.refreshCount, 1)
 })
@@ -335,7 +336,8 @@ test('階層が1つだけの場合は単一の実行候補をルートに統合�
 
   assert.equal(state.menuItems.get('uniq').visible, false)
   assert.equal(state.menuItems.get('uniq:action').visible, true)
-  assert.equal(state.menuItems.get('uniq:action').title, 'uniq: url: topLevelScope')
+  assert.equal(state.menuItems.get('uniq:action').title,
+    'uniq: url: topLevelScope (&Z)')
   assert.deepEqual(getChildIds('uniq'), [])
 
   await clickMenu('uniq:action', 2)
@@ -366,13 +368,13 @@ test('表示後に非同期でルート項目へ重複数を追加する', async
   await showMenu(2)
 
   assert.equal(state.menuItems.get('uniq:action').title,
-    'uniq: url: topLevelScope')
+    'uniq: url: topLevelScope (&Z)')
   assert.equal(state.refreshCount, 1)
 
   await waitForMenuCountUpdate()
 
   assert.equal(state.menuItems.get('uniq:action').title,
-    'uniq: url: topLevelScope (1)')
+    'uniq: url: topLevelScope — menuCloseOneTab (&Z)')
   assert.equal(state.refreshCount, 2)
 })
 
@@ -414,22 +416,22 @@ test('表示後に非同期でサブメニュー項目へ重複数を追加す�
 
   assert.equal(
     state.menuItems.get('scope:url:currentHierarchy').title,
-    'topLevelScope',
+    'topLevelScope (&L)',
   )
 
   await waitForMenuCountUpdate()
 
   assert.equal(
     state.menuItems.get('scope:url:currentHierarchy').title,
-    'topLevelScope (1)',
+    'topLevelScope — menuCloseOneTab (&L)',
   )
   assert.equal(
     state.menuItems.get('scope:url:eachHierarchy').title,
-    'eachHierarchyMenu (2)',
+    'eachHierarchyMenu — menuCloseTabs:2 (&E)',
   )
   assert.equal(
     state.menuItems.get('scope:url:allTabs').title,
-    'allTabsMenu (3)',
+    'allTabsMenu — menuCloseTabs:3 (&A)',
   )
 })
 
@@ -472,11 +474,11 @@ test('グループ内タブのトップレベル項目はグループ内重複�
 
   assert.equal(
     state.menuItems.get('scope:url:currentHierarchy').title,
-    'groupScope (1)',
+    'groupScope — menuCloseOneTab (&G)',
   )
   assert.equal(
     state.menuItems.get('scope:url:topLevelHierarchy').title,
-    'topLevelScope (1)',
+    'topLevelScope — menuCloseOneTab (&L)',
   )
 })
 
@@ -505,7 +507,7 @@ test('メニューが閉じられた後は重複数を反映しない', async ()
   await waitForMenuCountUpdate()
 
   assert.equal(state.menuItems.get('uniq:action').title,
-    'uniq: url: topLevelScope')
+    'uniq: url: topLevelScope (&Z)')
   assert.equal(state.refreshCount, 1)
 })
 
@@ -534,7 +536,8 @@ test('トップレベルタブではクリックした階層内だけの設定�
 
   assert.equal(state.menuItems.get('uniq').visible, false)
   assert.equal(state.menuItems.get('uniq:action').visible, true)
-  assert.equal(state.menuItems.get('uniq:action').title, 'uniq: url: topLevelScope')
+  assert.equal(state.menuItems.get('uniq:action').title,
+    'uniq: url: topLevelScope (&Z)')
   assert.deepEqual(getChildIds('uniq'), [])
 
   await clickMenu('uniq:action', 2)
@@ -561,11 +564,11 @@ test('グループ内タブだけでもトップレベル扱いの判定範囲�
   ])
   assert.equal(
     state.menuItems.get('scope:url:currentHierarchy').title,
-    'groupScope',
+    'groupScope (&G)',
   )
   assert.equal(
     state.menuItems.get('scope:url:topLevelHierarchy').title,
-    'topLevelScope',
+    'topLevelScope (&L)',
   )
 })
 
@@ -588,7 +591,7 @@ test('ピン留めタブではトップレベル扱いとして判定範囲を�
   ])
   assert.equal(
     state.menuItems.get('scope:url:currentHierarchy').title,
-    'topLevelScope',
+    'topLevelScope (&L)',
   )
 })
 
@@ -609,11 +612,11 @@ test('グループ内タブではクリックした階層内だけの設定で�
   ])
   assert.equal(
     state.menuItems.get('scope:url:currentHierarchy').title,
-    'groupScope',
+    'groupScope (&G)',
   )
   assert.equal(
     state.menuItems.get('scope:url:topLevelHierarchy').title,
-    'topLevelScope',
+    'topLevelScope (&L)',
   )
 })
 
@@ -630,7 +633,7 @@ test('グループ内タブではクリックした階層内をグループ内�
 
   assert.equal(
     state.menuItems.get('scope:url:currentHierarchy').title,
-    'groupScope',
+    'groupScope (&G)',
   )
 })
 
@@ -647,7 +650,7 @@ test('ピン留めタブではクリックした階層内をトップレベル�
 
   assert.equal(
     state.menuItems.get('scope:url:currentHierarchy').title,
-    'topLevelScope',
+    'topLevelScope (&L)',
   )
 })
 
@@ -839,13 +842,21 @@ test('複数の重複判定方法でもスコープが1つならサブメニュ�
   ])
   assert.equal(
     state.menuItems.get('flatScope:url:currentHierarchy').title,
-    'url: topLevelScope',
+    'url: topLevelScope (&U)',
   )
-  assert.equal(state.menuItems.get('key:title').title, 'title')
+  assert.equal(state.menuItems.get('key:title').title, 'title (&T)')
   assert.deepEqual(getChildIds('key:title'), [
     'scope:title:currentHierarchy',
     'scope:title:allTabs',
   ])
+
+  await waitForMenuCountUpdate()
+
+  assert.equal(
+    state.menuItems.get('flatScope:url:currentHierarchy').title,
+    'url: topLevelScope — menuCloseNoTabs (&U)',
+  )
+  assert.equal(state.menuItems.get('key:title').title, 'title (&T)')
 })
 
 test('複数の重複判定方法で畳んだ判定キー項目を直接実行できる', async () => {

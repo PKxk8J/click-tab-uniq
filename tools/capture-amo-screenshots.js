@@ -721,7 +721,7 @@ async function captureMenuScreenshot ({ shallow, path, cropName, fallbackCrop })
     const topMatcher = shallow
       ? createLabelMatcher({ prefix: SCREENSHOT_LOCALE.labels.uniq + ': ' })
       : createLabelMatcher({
-          exact: SCREENSHOT_LOCALE.labels.uniq,
+          exact: SCREENSHOT_LOCALE.labels.uniq + ' (Z)',
           last: true,
         })
 
@@ -730,7 +730,7 @@ async function captureMenuScreenshot ({ shallow, path, cropName, fallbackCrop })
     await hoverChromeMenuItem(topMatcher)
     if (!shallow) {
       await hoverChromeMenuItem(createLabelMatcher({
-        exact: SCREENSHOT_LOCALE.labels.url,
+        exact: SCREENSHOT_LOCALE.labels.url + ' (U)',
       }))
     }
     await driver.sleep(800)
