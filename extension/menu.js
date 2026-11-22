@@ -54,8 +54,7 @@ const SCOPE_MENU_LABEL_KEYS = {
 }
 
 const MENU_ACCESS_KEYS = {
-  // Z is available in Firefox's built-in tab and page menus in Japanese and English.
-  [KEY_UNIQ]: 'Z',
+  [KEY_UNIQ]: 'U',
   [KEY_URL]: 'U',
   [KEY_URL_WITHOUT_HASH]: 'H',
   [KEY_TITLE]: 'T',

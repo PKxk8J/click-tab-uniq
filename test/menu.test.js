@@ -217,7 +217,7 @@ function getAllChildIds (parentId) {
 
 test('ロード時にメニューを復元する', async () => {
   assert.ok(state.menuItems.has('uniq'))
-  assert.equal(state.menuItems.get('uniq').title, 'uniq (&Z)')
+  assert.equal(state.menuItems.get('uniq').title, 'uniq (&U)')
   assert.notEqual(state.menuItems.get('uniq').visible, false)
   assert.equal(state.menuItems.get('uniq:action').visible, false)
   assert.deepEqual(getAllChildIds('uniq'), [
@@ -254,7 +254,7 @@ test('表示処理は進行中のメニュー復元完了を待つ', async () =>
   assert.equal(state.menuItems.get('uniq').visible, false)
   assert.equal(state.menuItems.get('uniq:action').visible, true)
   assert.equal(state.menuItems.get('uniq:action').title,
-    'uniq: title: topLevelScope (&Z)')
+    'uniq: title: topLevelScope (&U)')
   assert.equal(state.refreshCount, 1)
 })
 
@@ -290,7 +290,7 @@ test('判定キーが1つだけの場合はルートに判定キー名を含め�
   await rebuildMenu()
   await showMenu(1)
 
-  assert.equal(state.menuItems.get('uniq').title, 'uniq: url (&Z)')
+  assert.equal(state.menuItems.get('uniq').title, 'uniq: url (&U)')
   assert.deepEqual(getChildIds('uniq'), [
     'scope:url:currentHierarchy',
     'scope:url:eachHierarchy',
@@ -337,7 +337,7 @@ test('階層が1つだけの場合は単一の実行候補をルートに統合�
   assert.equal(state.menuItems.get('uniq').visible, false)
   assert.equal(state.menuItems.get('uniq:action').visible, true)
   assert.equal(state.menuItems.get('uniq:action').title,
-    'uniq: url: topLevelScope (&Z)')
+    'uniq: url: topLevelScope (&U)')
   assert.deepEqual(getChildIds('uniq'), [])
 
   await clickMenu('uniq:action', 2)
@@ -368,13 +368,13 @@ test('表示後に非同期でルート項目へ重複数を追加する', async
   await showMenu(2)
 
   assert.equal(state.menuItems.get('uniq:action').title,
-    'uniq: url: topLevelScope (&Z)')
+    'uniq: url: topLevelScope (&U)')
   assert.equal(state.refreshCount, 1)
 
   await waitForMenuCountUpdate()
 
   assert.equal(state.menuItems.get('uniq:action').title,
-    'uniq: url: topLevelScope — menuCloseOneTab (&Z)')
+    'uniq: url: topLevelScope — menuCloseOneTab (&U)')
   assert.equal(state.refreshCount, 2)
 })
 
@@ -507,7 +507,7 @@ test('メニューが閉じられた後は重複数を反映しない', async ()
   await waitForMenuCountUpdate()
 
   assert.equal(state.menuItems.get('uniq:action').title,
-    'uniq: url: topLevelScope (&Z)')
+    'uniq: url: topLevelScope (&U)')
   assert.equal(state.refreshCount, 1)
 })
 
@@ -537,7 +537,7 @@ test('トップレベルタブではクリックした階層内だけの設定�
   assert.equal(state.menuItems.get('uniq').visible, false)
   assert.equal(state.menuItems.get('uniq:action').visible, true)
   assert.equal(state.menuItems.get('uniq:action').title,
-    'uniq: url: topLevelScope (&Z)')
+    'uniq: url: topLevelScope (&U)')
   assert.deepEqual(getChildIds('uniq'), [])
 
   await clickMenu('uniq:action', 2)

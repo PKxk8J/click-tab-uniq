@@ -721,7 +721,7 @@ async function captureMenuScreenshot ({ shallow, path, cropName, fallbackCrop })
     const topMatcher = shallow
       ? createLabelMatcher({ prefix: SCREENSHOT_LOCALE.labels.uniq + ': ' })
       : createLabelMatcher({
-          exact: SCREENSHOT_LOCALE.labels.uniq + ' (Z)',
+          exact: SCREENSHOT_LOCALE.labels.uniq + ' (U)',
           last: true,
         })
 
