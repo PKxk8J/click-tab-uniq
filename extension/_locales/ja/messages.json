@@ -56,6 +56,15 @@
   "allTabsMenu": {
     "message": "全てのタブ"
   },
+  "menuCloseNoTabs": {
+    "message": "閉じるタブなし"
+  },
+  "menuCloseOneTab": {
+    "message": "1枚を閉じる"
+  },
+  "menuCloseTabs": {
+    "message": "$1枚を閉じる"
+  },
   "notification": {
     "message": "通知"
   },
