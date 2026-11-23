@@ -526,86 +526,78 @@ async function hoverChromeMenuItem (matcher) {
   }
 }
 
-async function getOpenChromeMenuCrop (topMatcher) {
-  const windowRect = await driver.manage().window().getRect()
+async function getOpenChromeMenuCrop (windowRect, topMatcher, submenuLabel) {
   await driver.setContext(firefox.Context.CHROME)
   try {
-    const crop = await driver.executeScript(`
-      const matcher = arguments[0]
+    const crop = await driver.wait(async () => {
+      return await driver.executeScript(`
+        const [matcher, submenuLabel] = arguments
 
-      function getLabel (item) {
-        return item.getAttribute('label') || item.label ||
-          item.textContent.trim()
-      }
-
-      function matches (label) {
-        if (matcher.exact && label === matcher.exact) {
-          return true
+        function getLabel (item) {
+          return item.getAttribute('label') || item.label ||
+            item.textContent.trim()
         }
-        return matcher.prefix && label.startsWith(matcher.prefix)
-      }
 
-      function toPlainRect (rect) {
+        function isVisible (item) {
+          const rect = item.getBoundingClientRect()
+          return rect.width > 0 && rect.height > 0 && !item.hidden
+        }
+
+        function getOpenPopup (menu) {
+          const popup = menu?.querySelector(':scope > menupopup')
+          return popup?.state === 'open' ? popup : null
+        }
+
+        const contextMenu = document.getElementById('tabContextMenu')
+        if (contextMenu?.state !== 'open') {
+          return null
+        }
+
+        const topItems = Array.from(contextMenu.children).filter((item) => {
+          const label = getLabel(item)
+          return isVisible(item) && ((matcher.exact && label === matcher.exact) ||
+            (matcher.prefix && label.startsWith(matcher.prefix)))
+        })
+        const topItem = matcher.last ? topItems.at(-1) : topItems[0]
+        if (!topItem) {
+          return null
+        }
+
+        const rects = [topItem.getBoundingClientRect()]
+        if (submenuLabel) {
+          const methodPopup = getOpenPopup(topItem)
+          const methodItem = methodPopup && Array.from(methodPopup.children).
+            find((item) => getLabel(item) === submenuLabel && isVisible(item))
+          const scopePopup = getOpenPopup(methodItem)
+          if (!scopePopup) {
+            return null
+          }
+
+          // Firefox refreshes the count labels after the menu opens.
+          const actions = Array.from(scopePopup.children).
+            filter((item) => item.localName === 'menuitem' && isVisible(item))
+          const countLabel = / — (?:Close [0-9]+ tabs?|No tabs to close) /
+          if (actions.length === 0 ||
+              actions.some((item) => !countLabel.test(getLabel(item)))) {
+            return null
+          }
+
+          rects.push(methodPopup.getBoundingClientRect(),
+            scopePopup.getBoundingClientRect())
+        }
+
+        const left = Math.floor(Math.min(...rects.map((rect) => rect.left)))
+        const top = Math.floor(Math.min(...rects.map((rect) => rect.top)))
+        const right = Math.ceil(Math.max(...rects.map((rect) => rect.right)))
+        const bottom = Math.ceil(Math.max(...rects.map((rect) => rect.bottom)))
         return {
-          bottom: rect.bottom,
-          height: rect.height,
-          left: rect.left,
-          right: rect.right,
-          top: rect.top,
-          width: rect.width,
+          x: left - 8,
+          y: top - 8,
+          width: right - left + 28,
+          height: bottom - top + 16,
         }
-      }
-
-      function sameRect (rect1, rect2) {
-        return Math.abs(rect1.left - rect2.left) < 1 &&
-          Math.abs(rect1.top - rect2.top) < 1 &&
-          Math.abs(rect1.width - rect2.width) < 1 &&
-          Math.abs(rect1.height - rect2.height) < 1
-      }
-
-      const topItems =
-        Array.from(document.querySelectorAll('menu, menuitem')).
-          filter((item) => {
-            const rect = item.getBoundingClientRect()
-            return rect.width > 0 && rect.height > 0 &&
-              !item.hidden && matches(getLabel(item))
-          })
-      const topItem = matcher.last
-        ? topItems[topItems.length - 1]
-        : topItems[0]
-      if (!topItem) {
-        return null
-      }
-
-      const topItemRect = topItem.getBoundingClientRect()
-      const parentPopupRect = topItem.closest('menupopup')?.
-        getBoundingClientRect()
-      const rects = [toPlainRect(topItemRect)]
-      for (const popup of document.querySelectorAll('menupopup')) {
-        const rect = popup.getBoundingClientRect()
-        if (rect.width <= 0 || rect.height <= 0) {
-          continue
-        }
-        if (parentPopupRect && sameRect(rect, parentPopupRect)) {
-          continue
-        }
-        rects.push(toPlainRect(rect))
-      }
-
-      const left = Math.floor(Math.min(...rects.map((rect) => rect.left)))
-      const top = Math.floor(Math.min(...rects.map((rect) => rect.top)))
-      const right = Math.ceil(Math.max(...rects.map((rect) => rect.right)))
-      const bottom = Math.ceil(Math.max(...rects.map((rect) => rect.bottom)))
-      return {
-        x: left - 8,
-        y: top - 8,
-        width: right - left + 28,
-        height: bottom - top + 16,
-      }
-    `, topMatcher)
-    if (!crop) {
-      throw new Error('top menu item was not found')
-    }
+      `, topMatcher, submenuLabel)
+    }, WAIT_MS, 'menu popups and duplicate counts did not become visible')
     return {
       x: windowRect.x + crop.x,
       y: windowRect.y + crop.y,
@@ -718,27 +710,30 @@ async function captureMenuScreenshot ({ shallow, path, cropName, fallbackCrop })
       height: 780,
     })
     await driver.sleep(500)
+    const { uniq, url } = SCREENSHOT_LOCALE.labels
     const topMatcher = shallow
-      ? createLabelMatcher({ prefix: SCREENSHOT_LOCALE.labels.uniq + ': ' })
+      ? createLabelMatcher({
+          prefix: uniq + ': ' + url + ': Top-Level Tabs — Close 1 tab (',
+        })
       : createLabelMatcher({
-          exact: SCREENSHOT_LOCALE.labels.uniq + ' (U)',
+          exact: uniq + ' (U)',
           last: true,
         })
+    const submenuLabel = shallow ? null : url + ' (U)'
 
     await closeChromeMenus()
     await openSelectedTabContextMenu()
     await hoverChromeMenuItem(topMatcher)
-    if (!shallow) {
-      await hoverChromeMenuItem(createLabelMatcher({
-        exact: SCREENSHOT_LOCALE.labels.url + ' (U)',
-      }))
+    if (submenuLabel) {
+      await hoverChromeMenuItem(createLabelMatcher({ exact: submenuLabel }))
     }
-    await driver.sleep(800)
 
     const windowRect = await driver.manage().window().getRect()
+    const openMenuCrop = await getOpenChromeMenuCrop(windowRect, topMatcher,
+      submenuLabel)
     const crop = process.env[cropName]
       ? getMenuCrop(windowRect, cropName, fallbackCrop)
-      : await getOpenChromeMenuCrop(topMatcher)
+      : openMenuCrop
     await captureScreenCrop(path, crop)
   } finally {
     await driver.actions({ async: true }).sendKeys('\uE00C').perform().
